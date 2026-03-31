@@ -290,9 +290,9 @@
     <div id="global-lock">
         <div class="vamp-card" style="max-width: 400px; text-align: center;">
             <h2 style="color: var(--blood-red)">Accesso Autorizzato</h2>
-            <p style="font-size: 0.8rem; margin-bottom: 20px; opacity: 0.7;">Inserisci il codice per accedere al gestionale.</p>
+            <p style="font-size: 0.8rem; margin-bottom: 20px; opacity: 0.7;">Inserisci il codice per accedere al gestionale admin.</p>
             <input type="password" id="global-pass" style="text-align: center; letter-spacing: 10px; font-size: 1.5rem;" maxlength="4">
-            <button onclick="unlockSite()" style="margin-top: 20px;">Sblocca</button>
+            <button onclick="unlockSite()" style="margin-top: 20px;">Entra</button>
         </div>
     </div>
 
@@ -521,6 +521,7 @@
         <section id="gestione" class="section">
             <div id="login-gestione" class="vamp-card" style="max-width: 400px; margin: 40px auto; text-align: center;">
                 <h2 style="color: var(--blood-red)">Accesso Autorizzato</h2>
+                <p style="font-size: 0.8rem; margin-bottom: 20px; opacity: 0.7;">Inserisci il codice per accedere al gestionale.</p>
                 <div class="form-group"><input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;"></div>
                 <button onclick="checkAccess()">Entra</button>
             </div>
@@ -626,7 +627,7 @@
         let saldoLogs = [];
         let saldoGlobale = 0;
 
-        const PASSWORD_GLOBAL = "1234";
+        const PASSWORD_GLOBAL = "Figlidellanotte";
         const PASSWORD_GDR = "7711"; 
         const VALORE_UNITARIO = 30;
 
