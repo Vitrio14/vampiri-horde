@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestionale Vampiri | Horde RP</title>
+    <title>Gestionale Vampiri Horde RP</title>
     <link rel="shortcut icon" href="logo.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Quicksand:wght@300;500&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         :root {
             --blood-red: #8b0000;
@@ -74,7 +77,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card {
             background: var(--vampire-grey);
             padding: 20px;
@@ -85,7 +88,23 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         .stat-card h3 { font-size: 0.8rem; color: var(--gold-accent); margin-bottom: 10px; opacity: 0.8; }
-        .stat-card p { font-size: 2rem; font-weight: bold; color: #fff; }
+        .stat-card p { font-size: 1.8rem; font-weight: bold; color: #fff; }
+
+        /* Search Inputs */
+        .search-box {
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .search-box input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid #444;
+            color: var(--gold-accent);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        .search-box input:focus { border-color: var(--blood-red); outline: none; box-shadow: 0 0 5px var(--blood-red); }
 
         /* Cards & Forms */
         .vamp-card {
@@ -126,9 +145,9 @@
         button.btn-delete { background: transparent; border: 1px solid var(--withdraw-red); color: var(--withdraw-red); padding: 5px 10px; width: auto; font-size: 0.7rem; }
         button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 
-        /* Scroller Containers */
+        /* Scroller Containers - Scroll dopo ~5 elementi */
         .scroll-container {
-            max-height: 450px;
+            max-height: 400px; 
             overflow-y: auto;
             background: rgba(0,0,0,0.2);
             border: 1px solid #222;
@@ -140,26 +159,38 @@
         /* Tables */
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #222; }
-        th { color: var(--gold-accent); font-family: 'Cinzel', serif; font-size: 0.75rem; }
+        th { color: var(--gold-accent); font-family: 'Cinzel', serif; font-size: 0.75rem; position: sticky; top: 0; background: #1a1a1a; z-index: 2; }
         .photo-link { color: #5dade2; text-decoration: none; border-bottom: 1px dashed; }
 
-        /* Inventory Grid */
-        .inv-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
-            gap: 15px; 
+        /* Layout 3 Inventari */
+        .inv-layout-3col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
         }
-        .inv-item {
-            background: linear-gradient(145deg, #1a1a1a, #111);
-            padding: 20px;
+        .inv-column {
+            background: rgba(22, 22, 22, 0.6);
             border: 1px solid #333;
             border-radius: 10px;
-            text-align: center;
+            padding: 15px;
+        }
+        .inv-column h3 { font-size: 0.9rem; color: var(--gold-accent); border-bottom: 1px solid var(--blood-red); padding-bottom: 10px; margin-bottom: 15px; text-align: center; }
+
+        /* Inventory Items */
+        .inv-item {
+            background: linear-gradient(145deg, #1a1a1a, #111);
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             transition: 0.3s;
         }
-        .inv-item:hover { border-color: var(--blood-red); transform: scale(1.02); }
-        .inv-item p { font-size: 0.8rem; color: var(--gold-accent); margin-bottom: 8px; }
-        .inv-qty { font-size: 1.8rem; font-weight: bold; }
+        .inv-item p { font-size: 0.8rem; color: var(--gold-accent); margin: 0; }
+        .inv-qty { font-size: 1.1rem; font-weight: bold; color: #fff; }
 
         /* Logs */
         .log-entry {
@@ -167,11 +198,12 @@
             border-bottom: 1px solid #1a1a1a;
             font-size: 0.85rem;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
         }
-        .log-action-prendi { color: var(--withdraw-red); text-transform: uppercase; font-size: 0.7rem; }
+        .log-main { display: flex; justify-content: space-between; align-items: center; }
+        .log-action-prendi, .log-action-preleva { color: var(--withdraw-red); text-transform: uppercase; font-size: 0.7rem; }
         .log-action-deposita { color: var(--success-green); text-transform: uppercase; font-size: 0.7rem; }
+        .log-causale { font-style: italic; color: var(--gold-accent); font-size: 0.75rem; margin-top: 4px; border-left: 2px solid var(--blood-red); padding-left: 10px; }
         .log-time { color: #555; font-size: 0.75rem; }
 
         /* Archive Styles */
@@ -199,7 +231,7 @@
         }
         @keyframes slideIn { from { transform: translateX(110%); } to { transform: translateX(0); } }
 
-        /* Calculator Specific Styles */
+        /* Calculator Styles */
         .calc-result-box {
             margin-top: 20px;
             padding: 20px;
@@ -229,6 +261,7 @@
         </div>
         <div class="nav-links">
             <div class="nav-link active" onclick="showSection('vendite')">Vendite</div>
+            <div class="nav-link" onclick="showSection('saldo')">Saldo</div>
             <div class="nav-link" onclick="showSection('calcolo')">Calcolo</div>
             <a href="https://postimages.org" target="_blank" class="nav-link">Sito Foto</a>
             <div class="nav-link" onclick="showSection('inventario')">Inventario</div>
@@ -241,17 +274,21 @@
         <section id="vendite" class="section active">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>Crediti Settimana Corrente</h3>
+                    <h3>Crediti Settimana - Carbonio</h3>
                     <p id="tot-dinastia">0 cr</p>
                 </div>
                 <div class="stat-card">
                     <h3>Totale Ekaton (50%)</h3>
                     <p id="tot-ekaton">0 cr</p>
                 </div>
+                <div class="stat-card" style="border-top-color: var(--gold-accent);">
+                    <h3>Saldo Dinastia</h3>
+                    <p id="tot-saldo-globale" style="color: var(--gold-accent);">0 cr</p>
+                </div>
             </div>
 
             <div class="vamp-card">
-                <h2>Consacra Vendita</h2>
+                <h2>Registra Vendita</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
                     <div class="form-group">
                         <label>Vampiro</label>
@@ -270,6 +307,9 @@
             </div>
 
             <h2>Vendite della Settimana</h2>
+            <div class="search-box">
+                <input type="text" id="search-vendite" placeholder="Cerca vampiro nelle vendite..." onkeyup="renderVendite()">
+            </div>
             <div class="scroll-container">
                 <table>
                     <thead>
@@ -287,6 +327,47 @@
             </div>
         </section>
 
+        <section id="saldo" class="section">
+            <div class="vamp-card">
+                <h2>Gestione Crediti Dinastia</h2>
+                <p style="font-size: 0.8rem; margin-bottom: 20px; opacity: 0.7;">Registra entrate o uscite di crediti dal fondo comune della Dinastia.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Vampiro Operante</label>
+                        <input type="text" id="saldo-nome" placeholder="Nome...">
+                    </div>
+                    <div class="form-group">
+                        <label>Importo (cr)</label>
+                        <input type="number" id="saldo-importo" placeholder="0">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Azione</label>
+                        <select id="saldo-azione">
+                            <option value="deposita">Deposita nel Fondo</option>
+                            <option value="preleva">Preleva dal Fondo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivazione</label>
+                        <input type="text" id="saldo-motivo" placeholder="Esempio: Tasse, acquisto materiali...">
+                    </div>
+                </div>
+                <button onclick="movimentoSaldo()">Registra Transazione</button>
+            </div>
+
+            <h2>Storico Transazioni Crediti</h2>
+            <div class="search-box">
+                <input type="text" id="search-saldo-logs" placeholder="Cerca nello storico crediti..." onkeyup="renderSaldoLogs()">
+            </div>
+            <div class="scroll-container">
+                <div id="saldo-logs-box"></div>
+            </div>
+        </section>
+
         <section id="calcolo" class="section">
             <div class="vamp-card" style="max-width: 600px; margin: 0 auto;">
                 <h2>Controllo vendite</h2>
@@ -300,14 +381,8 @@
 
                 <div id="calc-result" class="calc-result-box">
                     <h3 id="calc-res-nome" style="color: var(--blood-red); margin-bottom: 15px;">-</h3>
-                    <div class="calc-item">
-                        <span class="calc-label">Carbonio Venduto:</span>
-                        <span class="calc-val" id="calc-res-qty">0</span>
-                    </div>
-                    <div class="calc-item">
-                        <span class="calc-label">Crediti Totali:</span>
-                        <span class="calc-val" id="calc-res-tot">0 cr</span>
-                    </div>
+                    <div class="calc-item"><span class="calc-label">Carbonio Venduto:</span><span class="calc-val" id="calc-res-qty">0</span></div>
+                    <div class="calc-item"><span class="calc-label">Crediti Totali:</span><span class="calc-val" id="calc-res-tot">0 cr</span></div>
                     <div class="calc-item" style="border-top: 1px dashed #555; margin-top: 10px; padding-top: 15px;">
                         <span class="calc-label" style="color: var(--success-green);">Quota da Trattenere (40%):</span>
                         <span class="calc-val" id="calc-res-vamp" style="color: var(--success-green);">0 cr</span>
@@ -329,33 +404,65 @@
                         <input type="text" id="inv-user-name" placeholder="Nome...">
                     </div>
                     <div class="form-group">
-                        <label>Oggetto</label>
-                        <select id="inv-select-item"></select>
+                        <label>Scegli Inventario</label>
+                        <select id="inv-cat-select" onchange="popolaSelectOggetti()">
+                            <option value="Inventario 1">Inventario 1</option>
+                            <option value="Inventario 2">Inventario 2</option>
+                            <option value="Inventario 3">Inventario 3</option>
+                        </select>
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="form-group">
-                        <label>Azione</label>
-                        <select id="inv-action">
-                            <option value="prendi">Preleva</option>
-                            <option value="deposita">Deposita</option>
-                        </select>
+                        <label>Oggetto</label>
+                        <div class="search-box" style="margin-bottom:5px;">
+                            <input type="text" id="search-dropdown-item" placeholder="Filtra oggetti..." onkeyup="popolaSelectOggetti()">
+                        </div>
+                        <select id="inv-select-item"></select>
                     </div>
                     <div class="form-group">
                         <label>Quantità</label>
                         <input type="number" id="inv-qty-move" placeholder="0">
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Azione</label>
+                    <select id="inv-action">
+                        <option value="prendi">Preleva</option>
+                        <option value="deposita">Deposita</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Motivo del Movimento (Obbligatorio)</label>
+                    <input type="text" id="inv-motivo" placeholder="Esempio: Rifornimento caccia, donazione...">
+                </div>
                 <button onclick="movimentoInventario()">Registra movimento</button>
             </div>
 
-            <h2>Stato Deposito</h2>
-            <div class="scroll-container">
-                <div class="inv-grid" id="inv-display"></div>
+            <h2>Stato Depositi</h2>
+            <div class="search-box">
+                <input type="text" id="search-inventario" placeholder="Cerca oggetto nel deposito..." onkeyup="renderInventario()">
+            </div>
+            <div class="inv-layout-3col">
+                <div class="inv-column">
+                    <h3>Inventario 1</h3>
+                    <div class="scroll-container" id="display-inv-1"></div>
+                </div>
+                <div class="inv-column">
+                    <h3>Inventario 2</h3>
+                    <div class="scroll-container" id="display-inv-2"></div>
+                </div>
+                <div class="inv-column">
+                    <h3>Inventario 3</h3>
+                    <div class="scroll-container" id="display-inv-3"></div>
+                </div>
             </div>
 
             <h2 style="margin-top: 30px;">Cronologia Recente</h2>
-            <div class="scroll-container" style="max-height: 300px;">
+            <div class="search-box">
+                <input type="text" id="search-logs" placeholder="Cerca nel log (vampiro, oggetto, motivo)..." onkeyup="renderLogs()">
+            </div>
+            <div class="scroll-container">
                 <div id="inv-logs"></div>
             </div>
         </section>
@@ -363,57 +470,79 @@
         <section id="gestione" class="section">
             <div id="login-gestione" class="vamp-card" style="max-width: 400px; margin: 40px auto; text-align: center;">
                 <h2 style="color: var(--blood-red)">Accesso Autorizzato</h2>
-                <p style="font-size: 0.8rem; margin-bottom: 20px;">Inserire il codice della Dinastia</p>
-                <div class="form-group">
-                    <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px;">
-                </div>
+                <div class="form-group"><input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;"></div>
                 <button onclick="checkAccess()">Entra</button>
             </div>
-
             <div id="admin-content" style="display: none;">
+                
+                <div class="vamp-card">
+                    <h2>Gestione Saldo Dinastia</h2>
+                    <div style="display: flex; gap: 10px; align-items: end;">
+                        <div class="form-group" style="flex:1; margin:0">
+                            <label>Correzione Manuale Saldo (cr)</label>
+                            <input type="number" id="admin-saldo-val">
+                        </div>
+                        <button onclick="adminUpdateSaldo()" style="width: auto;">Aggiorna Saldo</button>
+                    </div>
+                </div>
+
                 <div class="vamp-card">
                     <h2>Gestione Inventario</h2>
-                    <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 30px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 30px;">
+                        <div class="form-group" style="margin:0"><label>Nome Oggetto</label><input type="text" id="admin-item-name"></div>
                         <div class="form-group" style="margin:0">
-                            <label>Nuovo Oggetto</label>
-                            <input type="text" id="admin-item-name" placeholder="Nome oggetto...">
+                            <label>Categoria</label>
+                            <select id="admin-item-cat">
+                                <option value="Inventario 1">Inventario 1</option>
+                                <option value="Inventario 2">Inventario 2</option>
+                                <option value="Inventario 3">Inventario 3</option>
+                            </select>
                         </div>
-                        <div class="form-group" style="margin:0">
-                            <label>Quantità Iniziale</label>
-                            <input type="number" id="admin-item-qty" value="0">
-                        </div>
-                        <button onclick="adminUpdateItem()" style="width: auto; padding: 12px 30px;">Aggiungi</button>
+                        <div class="form-group" style="margin:0"><label>Q.tà</label><input type="number" id="admin-item-qty" value="0"></div>
+                        <button onclick="adminUpdateItem()" style="width: auto;">Aggiungi</button>
                     </div>
-
-                    <div class="scroll-container" style="max-height: 300px;">
+                    
+                    <div class="search-box">
+                        <input type="text" id="search-admin-inv" placeholder="Cerca nella gestione inventario..." onkeyup="renderAdminTable()">
+                    </div>
+                    <div class="scroll-container">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th>Nome Oggetto</th>
-                                    <th>Giacenza Attuale</th>
-                                    <th>Azioni</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Nome Oggetto</th><th>Cat</th><th>Giacenza Attuale</th><th>Azioni</th></tr></thead>
                             <tbody id="admin-table-body"></tbody>
                         </table>
                     </div>
                 </div>
 
                 <div class="vamp-card">
-                    <h2>Cronologia Movimenti</h2>
-                    <div class="scroll-container" style="max-height: 300px;">
+                    <h2>Cronologia Movimenti (Inventario)</h2>
+                    <div class="search-box">
+                        <input type="text" id="search-admin-logs" placeholder="Cerca nei movimenti master..." onkeyup="renderAdminLogs()">
+                    </div>
+                    <div class="scroll-container">
                         <div id="admin-logs-box"></div>
                     </div>
                 </div>
 
                 <div class="vamp-card">
-                    <h2>Archivio Storico Vendite</h2>
-                    <p style="font-size: 0.8rem; margin-bottom: 15px; opacity: 0.6;">Qui puoi visualizzare ed eliminare transazioni specifiche.</p>
-                    <div class="scroll-container" style="max-height: 500px;" id="admin-archivio-container">
+                    <h2>Cronologia Saldo (Totale)</h2>
+                    <div class="search-box">
+                        <input type="text" id="search-admin-saldo-logs" placeholder="Cerca nei log saldo..." onkeyup="renderAdminSaldoLogs()">
+                    </div>
+                    <div class="scroll-container">
+                        <div id="admin-saldo-logs-box"></div>
+                    </div>
+                </div>
+
+                <div class="vamp-card">
+                    <h2>Archivio Storico Vendite (Carbonio)</h2>
+                    <div class="search-box">
+                        <input type="text" id="search-admin-archivio" placeholder="Cerca vampiro nell'archivio storico..." onkeyup="renderArchivioGestione()">
+                    </div>
+                    <div class="scroll-container" id="admin-archivio-container">
                     </div>
                 </div>
                 
-                <button onclick="logoutAdmin()" style="background: transparent; border: 1px solid #444; margin: 20px auto; display: block; width: auto; font-size: 0.8rem; padding: 10px 30px;">Chiudi Sessione</button>
+                <button onclick="logoutAdmin()" style="background: transparent; border: 1px solid #444; margin: 20px auto; display: block; width: auto;">Chiudi Sessione</button>
             </div>
         </section>
     </div>
@@ -424,9 +553,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // CONFIGURAZIONE FIREBASE
         const firebaseConfig = {
-            apiKey: "AIzaSy...", // Sostituisci con le tue chiavi reali
+            apiKey: "AIzaSy...", 
             authDomain: "vampiri-horde.firebaseapp.com",
             projectId: "vampiri-horde",
             storageBucket: "vampiri-horde.appspot.com",
@@ -437,176 +565,217 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- STATO GLOBALE ---
         let vendite = [];
-        let inventario = {};
+        let inventarioDati = [];
         let logs = [];
+        let saldoLogs = [];
+        let saldoGlobale = 0;
 
         const PASSWORD_GDR = "7711"; 
         const VALORE_UNITARIO = 30;
 
-        // --- INIZIALIZZAZIONE ---
+        const fmt = (n) => {
+            if (n === undefined || n === null) return "0";
+            return new Intl.NumberFormat('it-IT').format(n);
+        };
+
         window.addEventListener('DOMContentLoaded', () => {
             onSnapshot(collection(db, "vendite"), (snapshot) => {
                 vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderVendite();
                 aggiornaStats();
-                if (document.getElementById('admin-content').style.display === 'block') {
-                    renderArchivioGestione();
-                }
+                if (document.getElementById('admin-content').style.display === 'block') renderArchivioGestione();
             });
 
             onSnapshot(collection(db, "inventario"), (snapshot) => {
-                inventario = {};
-                snapshot.forEach(doc => {
-                    inventario[doc.id] = doc.data().qty;
-                });
+                inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderInventario();
                 popolaSelectOggetti();
-                if (document.getElementById('admin-content').style.display === 'block') {
-                    renderAdminTable();
-                }
+                if (document.getElementById('admin-content').style.display === 'block') renderAdminTable();
             });
 
-            const logQuery = query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50));
-            onSnapshot(logQuery, (snapshot) => {
+            onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => {
                 logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderLogs();
-                if (document.getElementById('admin-content').style.display === 'block') {
-                    renderAdminLogs();
+                if (document.getElementById('admin-content').style.display === 'block') renderAdminLogs();
+            });
+
+            onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => {
+                saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderSaldoLogs();
+                if (document.getElementById('admin-content').style.display === 'block') renderAdminSaldoLogs();
+            });
+
+            onSnapshot(doc(db, "config", "saldo"), (docSnap) => {
+                if(docSnap.exists()) {
+                    saldoGlobale = docSnap.data().valore;
+                } else {
+                    saldoGlobale = 0;
+                    setDoc(doc(db, "config", "saldo"), { valore: 0 });
                 }
+                document.getElementById('tot-saldo-globale').innerText = fmt(saldoGlobale) + " cr";
+                if (document.getElementById('admin-saldo-val')) document.getElementById('admin-saldo-val').value = saldoGlobale;
             });
         });
 
-        // --- FUNZIONI NAVIGAZIONE ---
         window.showSection = (id) => {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            
-            const activeLink = Array.from(document.querySelectorAll('.nav-link')).find(l => {
-                const clickAttr = l.getAttribute('onclick');
-                return clickAttr && clickAttr.includes(id);
-            });
-            if(activeLink) activeLink.classList.add('active');
-            
-            if(id === 'gestione' && document.getElementById('admin-content').style.display === 'block') {
-                renderArchivioGestione();
-                renderAdminTable();
-                renderAdminLogs();
-            }
+            const link = Array.from(document.querySelectorAll('.nav-link')).find(l => l.getAttribute('onclick')?.includes(id));
+            if(link) link.classList.add('active');
         };
 
-        // --- CALCOLATORE ---
+        window.movimentoSaldo = async () => {
+            const nome = document.getElementById('saldo-nome').value;
+            const importo = parseInt(document.getElementById('saldo-importo').value);
+            const azione = document.getElementById('saldo-azione').value;
+            const motivo = document.getElementById('saldo-motivo').value;
+            if(!nome || !importo || !motivo) return notify("Compila tutti i campi.");
+            const nuovoSaldo = azione === "preleva" ? saldoGlobale - importo : saldoGlobale + importo;
+            if(nuovoSaldo < 0) return notify("Saldo insufficiente!");
+            try {
+                await setDoc(doc(db, "config", "saldo"), { valore: nuovoSaldo }, { merge: true });
+                await addDoc(collection(db, "saldo_logs"), {
+                    utente: nome, tipo: azione, qty: importo, motivo, timestamp: Date.now(), ora: new Date().toLocaleTimeString('it-IT')
+                });
+                notify("Transazione completata.");
+                document.getElementById('saldo-importo').value = "";
+                document.getElementById('saldo-motivo').value = "";
+            } catch(e) { notify("Errore database."); }
+        };
+
+        window.renderSaldoLogs = () => {
+            const box = document.getElementById('saldo-logs-box');
+            if(!box) return;
+            const searchTerm = document.getElementById('search-saldo-logs').value.toLowerCase();
+            box.innerHTML = saldoLogs
+                .filter(l => l.utente.toLowerCase().includes(searchTerm) || l.motivo.toLowerCase().includes(searchTerm))
+                .map(l => `
+                <div class="log-entry">
+                    <div class="log-main"><span><strong>${l.utente}</strong> <span class="log-action-${l.tipo}">${l.tipo}</span> ${fmt(l.qty)} cr</span><span class="log-time">${l.ora}</span></div>
+                    <span class="log-causale">Motivo: ${l.motivo}</span>
+                </div>
+            `).join('');
+        };
+
         window.eseguiCalcolo = () => {
             const nomeInput = document.getElementById('calc-search-name').value.trim().toLowerCase();
-            const resultBox = document.getElementById('calc-result');
-            
-            if(!nomeInput) return notify("Inserisci un nome per interrogare l'oracolo.");
-
-            const currentWeekKey = getWeekYearKey(new Date());
-            const venditeVampiro = vendite.filter(v => 
-                v.settimanaEtichetta === currentWeekKey && 
-                v.nome.toLowerCase() === nomeInput
-            );
-
-            if(venditeVampiro.length === 0) {
-                resultBox.style.display = "none";
-                return notify("Nessuna traccia di questo vampiro nella settimana corrente.");
-            }
-
-            const totQty = venditeVampiro.reduce((acc, v) => acc + (v.qty || 0), 0);
-            const totCrediti = venditeVampiro.reduce((acc, v) => acc + (v.totale || 0), 0);
-            const quotaVamp = venditeVampiro.reduce((acc, v) => acc + (v.propria || 0), 0);
-            const quotaDin = venditeVampiro.reduce((acc, v) => acc + (v.dinastia || 0), 0);
-
+            const resBox = document.getElementById('calc-result');
+            const currentWeek = getWeekYearKey(new Date());
+            const filtrati = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome.toLowerCase() === nomeInput);
+            if(filtrati.length === 0) { resBox.style.display = "none"; return notify("Nessun record trovato."); }
+            const totQty = filtrati.reduce((a, b) => a + b.qty, 0);
+            const totCr = filtrati.reduce((a, b) => a + b.totale, 0);
             document.getElementById('calc-res-nome').innerText = nomeInput.toUpperCase();
-            document.getElementById('calc-res-qty').innerText = totQty;
-            document.getElementById('calc-res-tot').innerText = totCrediti + " cr";
-            document.getElementById('calc-res-vamp').innerText = quotaVamp + " cr";
-            document.getElementById('calc-res-din').innerText = quotaDin + " cr";
-
-            resultBox.style.display = "block";
-            notify("Calcolo completato.");
+            document.getElementById('calc-res-qty').innerText = fmt(totQty);
+            document.getElementById('calc-res-tot').innerText = fmt(totCr) + " cr";
+            document.getElementById('calc-res-vamp').innerText = fmt(totCr * 0.4) + " cr";
+            document.getElementById('calc-res-din').innerText = fmt(totCr * 0.6) + " cr";
+            resBox.style.display = "block";
         };
 
-        // --- VENDITE ---
         window.registraVendita = async () => {
             const nome = document.getElementById('vamp-nome').value;
             const qty = parseInt(document.getElementById('vamp-qty').value);
             const foto = document.getElementById('vamp-foto').value || "#";
-
             if(!nome || !qty) return notify("Dati incompleti.");
-
-            const dataCorrente = new Date();
-            const totale = qty * VALORE_UNITARIO;
-            
+            const tot = qty * VALORE_UNITARIO;
             try {
                 await addDoc(collection(db, "vendite"), {
-                    nome, qty, foto, totale,
-                    propria: totale * 0.4,
-                    dinastia: totale * 0.6,
-                    dataISO: dataCorrente.toISOString(),
-                    timestamp: Date.now(),
-                    settimanaEtichetta: getWeekYearKey(dataCorrente)
+                    nome, qty, foto, totale: tot, propria: tot * 0.4, dinastia: tot * 0.6,
+                    timestamp: Date.now(), settimanaEtichetta: getWeekYearKey(new Date())
                 });
-
-                notify("Vendita registrata nelle tenebre.");
+                notify("Vendita registrata.");
                 document.getElementById('vamp-qty').value = "";
-                document.getElementById('vamp-foto').value = "";
-            } catch (e) {
-                notify("Errore Firebase: " + e.code);
-            }
+            } catch (e) { notify("Errore Firebase."); }
         };
 
-        // --- INVENTARIO ---
+        window.popolaSelectOggetti = () => {
+            const cat = document.getElementById('inv-cat-select').value;
+            const searchInput = document.getElementById('search-dropdown-item');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+            const select = document.getElementById('inv-select-item');
+            if(!select) return;
+            select.innerHTML = inventarioDati
+                .filter(i => i.categoria === cat && i.id.toLowerCase().includes(searchTerm))
+                .map(i => `<option value="${i.id}">${i.id}</option>`).join('');
+        };
+
         window.movimentoInventario = async () => {
             const utente = document.getElementById('inv-user-name').value;
-            const item = document.getElementById('inv-select-item').value;
+            const itemID = document.getElementById('inv-select-item').value;
             const action = document.getElementById('inv-action').value;
             const qty = parseInt(document.getElementById('inv-qty-move').value);
-
-            if(!utente || !qty) return notify("Campi richiesti mancanti.");
-            if(action === "prendi" && inventario[item] < qty) return notify("Scorte insufficienti!");
-
-            const newQty = action === "prendi" ? inventario[item] - qty : inventario[item] + qty;
-
-            try {
-                await setDoc(doc(db, "inventario", item), { qty: newQty });
-                await addDoc(collection(db, "logs"), {
-                    utente, tipo: action, item, qty,
-                    timestamp: Date.now(),
-                    ora: new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})
-                });
-
-                notify("Baule aggiornato.");
-                document.getElementById('inv-qty-move').value = "";
-            } catch (e) {
-                notify("Errore: " + e.message);
-            }
+            const motivo = document.getElementById('inv-motivo').value;
+            if(!utente || !qty || !motivo) return Swal.fire("Errore", "Compila tutti i campi!", "error");
+            const item = inventarioDati.find(i => i.id === itemID);
+            const newQty = action === "prendi" ? item.qty - qty : item.qty + qty;
+            if(newQty < 0) return notify("Scorte insufficienti!");
+            await updateDoc(doc(db, "inventario", itemID), { qty: newQty });
+            await addDoc(collection(db, "logs"), { utente, tipo: action, item: itemID, qty, motivo, timestamp: Date.now(), ora: new Date().toLocaleTimeString('it-IT') });
+            Swal.fire("Successo", "Movimento registrato", "success");
+            document.getElementById('inv-qty-move').value = "";
+            document.getElementById('inv-motivo').value = "";
         };
 
-        // --- GESTIONE ---
+        window.renderVendite = () => {
+            const lista = document.getElementById('lista-vendite');
+            if(!lista) return;
+            const searchTerm = document.getElementById('search-vendite').value.toLowerCase();
+            const key = getWeekYearKey(new Date());
+            lista.innerHTML = vendite
+                .filter(v => v.settimanaEtichetta === key && v.nome.toLowerCase().includes(searchTerm))
+                .map(v => `
+                <tr><td>${v.nome}</td><td>${fmt(v.qty)}</td><td>${fmt(v.totale)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td><a href="${v.foto}" target="_blank" class="photo-link">PROVA</a></td></tr>
+            `).join('');
+        };
+
+        window.renderInventario = () => {
+            const searchTerm = document.getElementById('search-inventario').value.toLowerCase();
+            [1, 2, 3].forEach(n => {
+                const container = document.getElementById(`display-inv-${n}`);
+                if(!container) return;
+                container.innerHTML = inventarioDati
+                    .filter(i => i.categoria === `Inventario ${n}` && i.id.toLowerCase().includes(searchTerm))
+                    .map(i => `<div class="inv-item"><span>${i.id}</span><span class="inv-qty">${fmt(i.qty)}</span></div>`).join('');
+            });
+        };
+
+        window.renderLogs = () => {
+            const logElement = document.getElementById('inv-logs');
+            if(!logElement) return;
+            const searchTerm = document.getElementById('search-logs').value.toLowerCase();
+            logElement.innerHTML = logs
+                .filter(l => l.utente.toLowerCase().includes(searchTerm) || l.item.toLowerCase().includes(searchTerm) || (l.motivo && l.motivo.toLowerCase().includes(searchTerm)))
+                .map(l => `
+                <div class="log-entry">
+                    <div class="log-main"><span><strong>${l.utente}</strong> <span class="log-action-${l.tipo}">${l.tipo}</span> ${fmt(l.qty)}x ${l.item}</span><span class="log-time">${l.ora}</span></div>
+                    <span class="log-causale">Motivo: ${l.motivo || 'N/D'}</span>
+                </div>
+            `).join('');
+        };
+
         window.checkAccess = () => {
             if(document.getElementById('admin-pass').value === PASSWORD_GDR) {
                 document.getElementById('login-gestione').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
-                renderAdminTable();
-                renderArchivioGestione();
-                renderAdminLogs();
-                notify("Sessione di comando avviata.");
-            } else {
-                notify("Codice errato.");
-            }
+                renderAdminTable(); renderArchivioGestione(); renderAdminLogs(); renderAdminSaldoLogs();
+            } else { notify("Codice errato."); }
+        };
+
+        window.adminUpdateSaldo = async () => {
+            const v = parseInt(document.getElementById('admin-saldo-val').value);
+            await setDoc(doc(db, "config", "saldo"), { valore: v }, { merge: true });
+            notify("Saldo Dinastia aggiornato manualmente.");
         };
 
         window.adminUpdateItem = async () => {
-            const nome = document.getElementById('admin-item-name').value;
-            const qty = parseInt(document.getElementById('admin-item-qty').value) || 0;
-            if(!nome) return;
-            await setDoc(doc(db, "inventario", nome), { qty: qty });
+            const n = document.getElementById('admin-item-name').value;
+            const c = document.getElementById('admin-item-cat').value;
+            const q = parseInt(document.getElementById('admin-item-qty').value) || 0;
+            if(n) await setDoc(doc(db, "inventario", n), { qty: q, categoria: c });
             document.getElementById('admin-item-name').value = "";
-            notify("Nuovo oggetto forgiato.");
         };
 
         window.adminUpdateQty = async (item, val) => {
@@ -615,172 +784,117 @@
         };
 
         window.adminDeleteItem = async (item) => {
-            if(confirm(`Eliminare definitivamente ${item}?`)) {
-                await deleteDoc(doc(db, "inventario", item));
-                notify("Oggetto rimosso dall'esistenza.");
-            }
+            const res = await Swal.fire({ title: 'Eliminare?', text: `Vuoi eliminare ${item}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000' });
+            if(res.isConfirmed) { await deleteDoc(doc(db, "inventario", item)); notify("Rimosso."); }
         };
 
         window.adminDeleteVendita = async (id) => {
-            if(confirm("Eliminare questa vendita dall'archivio?")) {
-                await deleteDoc(doc(db, "vendite", id));
-                notify("Vendita eliminata dall'archivio.");
-            }
+            const res = await Swal.fire({ title: 'Elimina Vendita', icon: 'question', showCancelButton: true, confirmButtonColor: '#8b0000' });
+            if(res.isConfirmed) { await deleteDoc(doc(db, "vendite", id)); notify("Eliminata."); }
         };
 
         window.adminDeleteLog = async (id) => {
-            if(confirm("Eliminare questa voce di log? (Non modifica le quantità nel baule)")) {
-                await deleteDoc(doc(db, "logs", id));
-                notify("Memoria epurata.");
-            }
+            const res = await Swal.fire({ title: 'Epurazione Log', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000' });
+            if(res.isConfirmed) { await deleteDoc(doc(db, "logs", id)); notify("Epurato."); }
         };
 
-        window.logoutAdmin = () => {
-            document.getElementById('login-gestione').style.display = 'block';
-            document.getElementById('admin-content').style.display = 'none';
-            document.getElementById('admin-pass').value = "";
-            notify("Accesso revocato.");
+        window.adminDeleteSaldoLog = async (id) => {
+            const res = await Swal.fire({ title: 'Rimuovi Log Saldo?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000' });
+            if(res.isConfirmed) { await deleteDoc(doc(db, "saldo_logs", id)); notify("Log rimosso."); }
         };
 
-        // --- RENDER FUNCTIONS ---
-        function renderVendite() {
-            const lista = document.getElementById('lista-vendite');
-            const currentWeekKey = getWeekYearKey(new Date());
-            lista.innerHTML = "";
-            const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
-            
-            if(correnti.length === 0) {
-                lista.innerHTML = "<tr><td colspan='6' style='text-align:center; opacity:0.5'>Nessuna vendita registrata questa settimana.</td></tr>";
-                return;
-            }
+        window.renderAdminTable = () => {
+            const tbody = document.getElementById('admin-table-body');
+            if(!tbody) return;
+            const searchTerm = document.getElementById('search-admin-inv').value.toLowerCase();
+            tbody.innerHTML = inventarioDati
+                .filter(i => i.id.toLowerCase().includes(searchTerm))
+                .map(i => `
+                <tr><td>${i.id}</td><td>${i.categoria || 'N/D'}</td><td><input type="number" value="${i.qty}" onchange="adminUpdateQty('${i.id}', this.value)" style="width:80px; padding:5px"></td><td><button class="btn-delete" onclick="adminDeleteItem('${i.id}')">ELIMINA</button></td></tr>
+            `).join('');
+        };
 
-            correnti.forEach(v => {
-                lista.innerHTML += `<tr>
-                    <td>${v.nome}</td><td>${v.qty}</td><td>${v.totale}</td>
-                    <td>${v.propria}</td><td>${v.dinastia}</td>
-                    <td><a href="${v.foto}" target="_blank" class="photo-link">PROVA</a></td>
-                </tr>`;
+        window.renderAdminLogs = () => {
+            const logBox = document.getElementById('admin-logs-box');
+            if(!logBox) return;
+            const searchTerm = document.getElementById('search-admin-logs').value.toLowerCase();
+            logBox.innerHTML = logs
+                .filter(l => l.utente.toLowerCase().includes(searchTerm) || l.item.toLowerCase().includes(searchTerm))
+                .map(l => `
+                <div class="log-entry">
+                    <div class="log-main"><span><strong>${l.utente}</strong> <span class="log-action-${l.tipo}">${l.tipo}</span> ${fmt(l.qty)}x ${l.item}</span><button class="btn-delete" onclick="adminDeleteLog('${l.id}')">ELIMINA</button></div>
+                    <span class="log-causale">${l.motivo || ''}</span>
+                </div>
+            `).join('');
+        };
+
+        window.renderAdminSaldoLogs = () => {
+            const logBox = document.getElementById('admin-saldo-logs-box');
+            if(!logBox) return;
+            const searchTerm = document.getElementById('search-admin-saldo-logs').value.toLowerCase();
+            logBox.innerHTML = saldoLogs
+                .filter(l => l.utente.toLowerCase().includes(searchTerm) || l.motivo.toLowerCase().includes(searchTerm))
+                .map(l => `
+                <div class="log-entry">
+                    <div class="log-main"><span><strong>${l.utente}</strong> <span class="log-action-${l.tipo}">${l.tipo}</span> ${fmt(l.qty)} cr</span><button class="btn-delete" onclick="adminDeleteSaldoLog('${l.id}')">X</button></div>
+                    <span class="log-causale">${l.motivo}</span>
+                </div>
+            `).join('');
+        };
+
+        window.renderArchivioGestione = () => {
+            const searchTerm = document.getElementById('search-admin-archivio').value.toLowerCase();
+            const container = document.getElementById('admin-archivio-container');
+            if(!container) return;
+            const gruppi = {};
+            vendite.forEach(v => {
+                if(!gruppi[v.settimanaEtichetta]) gruppi[v.settimanaEtichetta] = [];
+                gruppi[v.settimanaEtichetta].push(v);
             });
+            container.innerHTML = Object.keys(gruppi).sort().reverse().map(key => {
+                const filtered = gruppi[key].filter(v => v.nome.toLowerCase().includes(searchTerm));
+                if(filtered.length === 0 && searchTerm !== "") return "";
+                const range = getWeekRangeLabel(key);
+                return `<div class="week-archive-block"><div class="week-title">Settimana: ${range}</div><table><thead><tr><th>Vampiro</th><th>Qty</th><th>Dinastia</th><th>Azione</th></tr></thead>
+                <tbody>${filtered.map(v => `<tr><td>${v.nome}</td><td>${fmt(v.qty)}</td><td>${fmt(v.dinastia)}</td><td><button class="btn-delete" onclick="adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div>`;
+            }).join('');
+        };
+
+        window.logoutAdmin = () => location.reload();
+
+        function getWeekYearKey(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return d.getUTCFullYear() + "-W" + Math.ceil((((d - yearStart) / 86400000) + 1) / 7).toString().padStart(2, '0');
+        }
+
+        function getWeekRangeLabel(weekKey) {
+            const [year, week] = weekKey.split('-W');
+            const simple = new Date(year, 0, 1 + (week - 1) * 7);
+            const ISOweekStart = simple;
+            ISOweekStart.setDate(simple.getDate() - (simple.getDay() || 7) + 1);
+            const ISOweekEnd = new Date(ISOweekStart);
+            ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
+            return `${ISOweekStart.toLocaleDateString('it-IT', {day:'2-digit', month:'short'})} - ${ISOweekEnd.toLocaleDateString('it-IT', {day:'2-digit', month:'short'})}`;
         }
 
         function aggiornaStats() {
             const currentWeekKey = getWeekYearKey(new Date());
             const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
             const totaleDinastia = correnti.reduce((acc, curr) => acc + curr.dinastia, 0);
-            document.getElementById('tot-dinastia').innerText = totaleDinastia + " cr";
-            document.getElementById('tot-ekaton').innerText = (totaleDinastia * 0.5).toFixed(0) + " cr";
+            const statsDinastia = document.getElementById('tot-dinastia');
+            const statsEkaton = document.getElementById('tot-ekaton');
+            if(statsDinastia) statsDinastia.innerText = fmt(totaleDinastia) + " cr";
+            if(statsEkaton) statsEkaton.innerText = fmt(Math.floor(totaleDinastia * 0.5)) + " cr";
         }
 
-        function renderInventario() {
-            const display = document.getElementById('inv-display');
-            display.innerHTML = "";
-            for(let item in inventario) {
-                display.innerHTML += `<div class="inv-item"><p>${item}</p><div class="inv-qty">${inventario[item]}</div></div>`;
-            }
-        }
-
-        function renderLogs() {
-            const logBox = document.getElementById('inv-logs');
-            logBox.innerHTML = "";
-            logs.forEach(log => {
-                const actionClass = log.tipo === 'prendi' ? 'log-action-prendi' : 'log-action-deposita';
-                logBox.innerHTML += `<div class="log-entry">
-                    <span><strong>${log.utente}</strong> <span class="${actionClass}">${log.tipo}</span> ${log.qty}x ${log.item}</span>
-                    <span class="log-time">${log.ora}</span>
-                </div>`;
-            });
-        }
-
-        function renderAdminLogs() {
-            const logBox = document.getElementById('admin-logs-box');
-            logBox.innerHTML = "";
-            logs.forEach(log => {
-                const actionClass = log.tipo === 'prendi' ? 'log-action-prendi' : 'log-action-deposita';
-                logBox.innerHTML += `<div class="log-entry">
-                    <span><strong>${log.utente}</strong> <span class="${actionClass}">${log.tipo}</span> ${log.qty}x ${log.item}</span>
-                    <button class="btn-delete" onclick="adminDeleteLog('${log.id}')">ELIMINA</button>
-                </div>`;
-            });
-        }
-
-        function renderAdminTable() {
-            const tbody = document.getElementById('admin-table-body');
-            tbody.innerHTML = "";
-            for(let item in inventario) {
-                tbody.innerHTML += `<tr>
-                    <td><strong>${item}</strong></td>
-                    <td><input type="number" value="${inventario[item]}" onchange="adminUpdateQty('${item}', this.value)" style="width:80px; padding:5px"></td>
-                    <td><button class="btn-delete" onclick="adminDeleteItem('${item}')">ELIMINA</button></td>
-                </tr>`;
-            }
-        }
-
-        function renderArchivioGestione() {
-            const container = document.getElementById('admin-archivio-container');
-            container.innerHTML = "";
-            const gruppi = {};
-            vendite.forEach(v => {
-                if(!gruppi[v.settimanaEtichetta]) gruppi[v.settimanaEtichetta] = [];
-                gruppi[v.settimanaEtichetta].push(v);
-            });
-            const keys = Object.keys(gruppi).sort().reverse();
-
-            keys.forEach(key => {
-                const range = getWeekRangeLabel(key);
-                let html = `<div class="week-archive-block"><div class="week-title">Settimana: ${range}</div><table><thead><tr><th>Vampiro</th><th>Qty</th><th>Dinastia</th><th>Foto</th><th>Azioni</th></tr></thead><tbody>`;
-                gruppi[key].forEach(v => {
-                    html += `<tr>
-                        <td>${v.nome}</td>
-                        <td>${v.qty}</td>
-                        <td>${v.dinastia}</td>
-                        <td><a href="${v.foto}" target="_blank" class="photo-link">LINK</a></td>
-                        <td><button class="btn-delete" onclick="adminDeleteVendita('${v.id}')">ELIMINA</button></td>
-                    </tr>`;
-                });
-                html += `</tbody></table></div>`;
-                container.innerHTML += html;
-            });
-        }
-
-        function popolaSelectOggetti() {
-            const select = document.getElementById('inv-select-item');
-            if(!select) return;
-            select.innerHTML = "";
-            for(let item in inventario) {
-                select.innerHTML += `<option value="${item}">${item}</option>`;
-            }
-        }
-
-        // --- UTILS ---
-        function getWeekYearKey(date) {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-            return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
-        }
-
-        function getWeekRangeLabel(weekKey) {
-            const [year, week] = weekKey.split('-W');
-            const simple = new Date(year, 0, 1 + (week - 1) * 7);
-            const dow = simple.getDay();
-            const ISOweekStart = simple;
-            if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-            else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-            const ISOweekEnd = new Date(ISOweekStart);
-            ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
-            const options = { day: '2-digit', month: 'short' };
-            return `${ISOweekStart.toLocaleDateString('it-IT', options)} - ${ISOweekEnd.toLocaleDateString('it-IT', options)}`;
-        }
-
-        function notify(msg) {
-            const host = document.getElementById('notification-host');
-            const n = document.createElement('div');
-            n.className = 'notif';
-            n.innerText = msg;
-            host.appendChild(n);
-            setTimeout(() => { n.style.opacity = '0'; setTimeout(() => n.remove(), 500); }, 3500);
+        function notify(m) {
+            const h = document.getElementById('notification-host');
+            if(!h) return;
+            const n = document.createElement('div'); n.className='notif'; n.innerText=m;
+            h.appendChild(n); setTimeout(() => n.remove(), 3500);
         }
     </script>
 </body>
