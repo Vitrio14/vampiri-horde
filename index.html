@@ -39,7 +39,6 @@
             background-color: var(--dark-void);
             color: var(--text-light);
             font-family: 'Quicksand', sans-serif;
-            /* Fallback colore solido per evitare il salto bianco/nero prima del caricamento immagine */
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(139, 0, 0, 0.15) 0%, transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(197, 160, 89, 0.05) 0%, transparent 40%),
@@ -137,7 +136,6 @@
         .section { display: none; animation: slideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
         .section.active { display: block; }
         
-        /* Rimuoviamo l'animazione specifica per la gestione per evitare scatti visivi durante il check password */
         #gestione.active { animation: none; }
 
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -1029,9 +1027,10 @@
                 const range = getWeekRangeLabel(key);
                 const weekTotalQty = filtered.reduce((sum, v) => sum + v.qty, 0);
                 const weekTotalDinastia = filtered.reduce((sum, v) => sum + v.dinastia, 0);
+                const weekTotalEkaton = Math.floor(weekTotalDinastia * 0.5); // Calcolo quota Ekaton (50% Dinastia)
                 
                 return `<div class="week-archive-block">
-                    <div class="week-title">${range} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr</div>
+                    <div class="week-title">${range} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr | Ekaton: ${fmt(weekTotalEkaton)} cr</div>
                     <div style="overflow-x:auto;">
                         <table>
                             <thead>
