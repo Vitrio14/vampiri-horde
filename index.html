@@ -71,6 +71,23 @@
             backdrop-filter: blur(10px);
         }
 
+/* Modifica o aggiungi questo nel CSS */
+#lista-membri-dinamica {
+    max-height: 200px;    /* Altezza massima per circa 5-6 membri */
+    overflow-y: auto;     /* Attiva lo scroll se il contenuto eccede */
+    padding-right: 10px;  /* Spazio per non coprire il testo con la barra */
+}
+
+/* Questa regola applica lo scroll a tutti i box interni del Generale */
+#top-settimana-box, 
+#top-sempre-box, 
+#lista-membri-dinamica,
+.coming-soon-card div:not(.week-title) {
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
         /* Login Gestione Overlay - Schermo Intero Fisso */
         #login-container-gestione {
             position: fixed;
@@ -142,6 +159,7 @@
             display: flex !important;
             align-items: center;
             justify-content: center;
+            flex-direction: column;
         }
         
         #gestione.active { animation: none; }
@@ -185,6 +203,7 @@
             border-radius: 18px;
             margin-bottom: 2.5rem;
             box-shadow: var(--shadow-premium);
+            width: 100%;
         }
         .vamp-card h2 { color: var(--gold-accent); margin-bottom: 25px; font-size: 0.9rem; text-transform: uppercase; border-left: 3px solid var(--blood-red); padding-left: 15px; }
 
@@ -200,7 +219,7 @@
             font-size: 0.85rem;
             transition: all 0.3s ease;
         }
-        input:focus { border-color: var(--gold-accent); }
+        input:focus, select:focus { border-color: var(--gold-accent); }
 
         button {
             background: linear-gradient(135deg, var(--blood-red), #500000);
@@ -358,20 +377,35 @@
         .coming-soon-card { 
             background: var(--glass-bg); 
             border: 1px solid var(--glass-border); 
-            padding: 40px; 
+            padding: 30px 20px;
             border-radius: 18px; 
             text-align: center; 
             min-height: 200px; 
             display: flex; 
             flex-direction: column; 
-            justify-content: center; 
-            align-items: center;
+            justify-content: flex-start;
+            align-items: stretch;
             flex: 1; 
             min-width: 280px; 
             max-width: 350px;
         }
         .coming-soon-card h3 { color: var(--gold-dim); font-size: 1rem; margin-bottom: 10px; opacity: 0.5; }
         .coming-soon-card p { font-size: 0.7rem; color: #444; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* NUOVI STILI AGGIUNTI */
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+        }
+        .rank-top1 { border-left: 3px solid #ffd700; background: rgba(255, 215, 0, 0.05); }
+        .rank-top2 { border-left: 3px solid #c0c0c0; }
+        .rank-top3 { border-left: 3px solid #cd7f32; }
     </style>
 </head>
 <body>
@@ -405,6 +439,20 @@
     <div class="container">
         
         <section id="generale" class="section active">
+            <div class="vamp-card" style="margin-bottom: 20px;">
+                <h2 style="text-align: center;">🩸 Classifiche Dinastia</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div>
+                        <h4 style="font-size: 0.7rem; color: var(--gold-accent); text-transform: uppercase; margin-bottom: 15px; text-align: center;">Top Settimana</h4>
+                        <div id="top-settimana-box"></div>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 0.7rem; color: var(--gold-accent); text-transform: uppercase; margin-bottom: 15px; text-align: center;">Migliori di Sempre</h4>
+                        <div id="top-sempre-box"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="general-grid">
                 
                 <div class="coming-soon-card">
@@ -424,12 +472,8 @@
 
                 <div class="coming-soon-card">
                     <h3 style="color: var(--gold-accent); opacity: 1;">Membri e Ranghi</h3>
-                    <div style="margin-top: 15px; text-align: left; width: 100%; border-left: 1px solid var(--blood-red); padding-left: 15px;">
-                        <p style="font-size: 0.8rem; color: var(--text-light); text-transform: none; letter-spacing: normal; margin-bottom: 5px;"><strong>Marea:</strong> Originaria</p>
-                        <p style="font-size: 0.8rem; color: var(--text-light); text-transform: none; letter-spacing: normal; margin-bottom: 5px;"><strong>Lukas:</strong> Anziano</p>
-                        <p style="font-size: 0.8rem; color: var(--text-light); text-transform: none; letter-spacing: normal; margin-bottom: 5px;"><strong>Violet:</strong> Anziana</p>
-                        <p style="font-size: 0.8rem; color: var(--text-light); text-transform: none; letter-spacing: normal;"><strong>David:</strong> Anziano</p>
-                    </div>
+                    <div id="lista-membri-dinamica" style="margin-top: 15px; text-align: left; width: 100%; border-left: 1px solid var(--blood-red); padding-left: 15px;">
+                        </div>
                 </div>
 
             </div>
@@ -448,7 +492,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
                     <div class="form-group">
                         <label>Vampiro</label>
-                        <input type="text" id="vamp-nome" placeholder="Nome..." onkeydown="if(event.key==='Enter') registraVendita()">
+                        <select id="vamp-nome" class="vampiro-select-list"></select>
                     </div>
                     <div class="form-group">
                         <label>Quantità Carbonio</label>
@@ -495,7 +539,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>Vampiro Operante</label>
-                        <input type="text" id="saldo-nome" placeholder="Nome..." onkeydown="if(event.key==='Enter') movimentoSaldo()">
+                        <select id="saldo-nome" class="vampiro-select-list"></select>
                     </div>
                     <div class="form-group">
                         <label>Importo (cr)</label>
@@ -531,7 +575,7 @@
                 <h2>Controllo vendite</h2>
                 <div class="form-group">
                     <label>Nome del Vampiro</label>
-                    <input type="text" id="calc-search-name" placeholder="Esegui ricerca..." onkeydown="if(event.key==='Enter') eseguiCalcolo()">
+                    <select id="calc-search-name" class="vampiro-select-list"></select>
                 </div>
                 <button onclick="eseguiCalcolo()">Calcola</button>
 
@@ -557,7 +601,7 @@
                 <p style="font-size: 0.7rem; color: var(--gold-dim); margin-bottom: 20px; text-transform: uppercase;">Clicca su un oggetto sotto per registrarne il movimento.</p>
                 <div class="form-group" style="max-width: 300px;">
                     <label>Tuo Nome (Vampiro)</label>
-                    <input type="text" id="inv-user-name" placeholder="Inserisci il tuo nome...">
+                    <select id="inv-user-name" class="vampiro-select-list"></select>
                 </div>
             </div>
 
@@ -599,6 +643,21 @@
 
             <div id="admin-content" style="display: none;">
                 
+                <div class="vamp-card">
+                    <h2>Gestione Membri</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: flex-end;">
+                        <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="admin-vamp-nome"></div>
+                        <div class="form-group" style="margin:0"><label>Grado</label><input type="text" id="admin-vamp-grado"></div>
+                        <button onclick="aggiungiVampiro()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
+                    </div>
+                    <div class="scroll-container" style="max-height: 200px; margin-top: 20px;">
+                        <table style="font-size: 0.7rem;">
+                            <thead><tr><th>Nome</th><th>Grado</th><th>Azione</th></tr></thead>
+                            <tbody id="admin-vampiri-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card" style="border-color: var(--gold-dim);">
                         <h3>Carbonio Venduto (TOTALE STORICO)</h3>
@@ -694,6 +753,7 @@
         let logs = [];
         let saldoLogs = [];
         let saldoGlobale = 0;
+        let listaVampiri = []; // NUOVO
 
         const PASSWORD_GLOBAL = "2026";
         const PASSWORD_GDR = "7711"; 
@@ -721,6 +781,89 @@
             });
             Toast.fire({ icon: icon, title: msg });
         };
+
+        // --- GESTIONE MEMBRI (AGGIUNTO) ---
+        window.aggiungiVampiro = async () => {
+            const nome = document.getElementById('admin-vamp-nome').value.trim();
+            const grado = document.getElementById('admin-vamp-grado').value.trim();
+            if(!nome || !grado) return vampireToast("Inserisci nome e grado", "error");
+            await setDoc(doc(db, "membri", nome), { nome, grado });
+            document.getElementById('admin-vamp-nome').value = "";
+            document.getElementById('admin-vamp-grado').value = "";
+            vampireToast("Vampiro aggiunto", "success");
+        };
+
+        window.eliminaVampiro = async (id) => {
+            const res = await Swal.fire({ title: 'Eliminare membro?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111', color: '#fff' });
+            if(res.isConfirmed) await deleteDoc(doc(db, "membri", id));
+        };
+
+        function renderVampiriLists() {
+            // Popola i menu a tendina
+            const selects = document.querySelectorAll('.vampiro-select-list');
+            const options = `<option value="">-- Seleziona Vampiro --</option>` + 
+                listaVampiri.map(v => `<option value="${v.nome}">${v.nome}</option>`).join('');
+            selects.forEach(s => {
+                const currentVal = s.value;
+                s.innerHTML = options;
+                s.value = currentVal;
+            });
+
+            // Popola sezione Membri e Ranghi (Generale)
+            document.getElementById('lista-membri-dinamica').innerHTML = listaVampiri
+                .map(v => `<p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px;"><strong>${v.nome}:</strong> ${v.grado}</p>`)
+                .join('');
+
+            // Popola Tabella Gestione
+            const tbody = document.getElementById('admin-vampiri-body');
+            if(tbody) {
+                tbody.innerHTML = listaVampiri.map(v => `
+                    <tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>
+                `).join('');
+            }
+        }
+
+// --- CLASSIFICHE AGGIORNATE ---
+function renderClassifiche() {
+    const currentWeek = getWeekYearKey(new Date());
+    
+    // 1. Dati Settimanali
+    const mapSett = {};
+    vendite.filter(v => v.settimanaEtichetta === currentWeek).forEach(v => {
+        if (!mapSett[v.nome]) mapSett[v.nome] = { carbonio: 0, crediti: 0 };
+        mapSett[v.nome].carbonio += v.qty;
+        mapSett[v.nome].crediti += v.totale;
+    });
+    // Ordiniamo per carbonio (b[1].carbonio)
+    const rankSett = Object.entries(mapSett).sort((a,b) => b[1].carbonio - a[1].carbonio);
+
+    // 2. Dati di Sempre
+    const mapSempre = {};
+    vendite.forEach(v => {
+        if (!mapSempre[v.nome]) mapSempre[v.nome] = { carbonio: 0, crediti: 0 };
+        mapSempre[v.nome].carbonio += v.qty;
+        mapSempre[v.nome].crediti += v.totale;
+    });
+    // Ordiniamo per crediti (b[1].crediti)
+    const rankSempre = Object.entries(mapSempre).sort((a,b) => b[1].crediti - a[1].crediti);
+
+    // 3. Generatore HTML con allineamento corretto
+    const generateHtml = (arr) => {
+        if(arr.length === 0) return "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>";
+        return arr.map((item, index) => `
+            <div class="rank-item ${index === 0 ? 'rank-top1' : index === 1 ? 'rank-top2' : index === 2 ? 'rank-top3' : ''}">
+                <span style="font-weight:600;">${index + 1}. ${item[0]}</span>
+                <div style="text-align: right; line-height: 1.2;">
+                    <strong style="display:block; color:var(--text-light); font-size:0.75rem;">${fmt(item[1].carbonio)}x Carb.</strong>
+                    <small style="color:var(--gold-accent); font-size:0.6rem; text-transform:uppercase;">${fmt(item[1].crediti)} cr</small>
+                </div>
+            </div>
+        `).join('');
+    };
+
+    document.getElementById('top-settimana-box').innerHTML = generateHtml(rankSett);
+    document.getElementById('top-sempre-box').innerHTML = generateHtml(rankSempre);
+}
 
         // --- EXPORT GLOBALE FUNZIONI ---
         window.unlockSite = () => {
@@ -760,7 +903,7 @@
             try {
                 await setDoc(doc(db, "config", "saldo"), { valore: nuovoSaldo }, { merge: true });
                 await addDoc(collection(db, "saldo_logs"), {
-                    utente: nome, tipo: action, qty: importo, motivo, 
+                    utente: nome, tipo: azione, qty: importo, motivo, 
                     timestamp: Date.now(), 
                     dataStr: now.toLocaleDateString('it-IT'),
                     ora: now.toLocaleTimeString('it-IT')
@@ -789,10 +932,11 @@
         };
 
         window.eseguiCalcolo = () => {
-            const nomeInput = document.getElementById('calc-search-name').value.trim().toLowerCase();
+            const nomeInput = document.getElementById('calc-search-name').value;
+            if(!nomeInput) return vampireToast("Seleziona un vampiro", "error");
             const resBox = document.getElementById('calc-result');
             const currentWeek = getWeekYearKey(new Date());
-            const filtrati = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome.toLowerCase() === nomeInput);
+            const filtrati = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome === nomeInput);
             if(filtrati.length === 0) { resBox.style.display = "none"; return vampireToast("Nessun record trovato.", "error"); }
             const totQty = filtrati.reduce((a, b) => a + b.qty, 0);
             const totCr = filtrati.reduce((a, b) => a + b.totale, 0);
@@ -864,7 +1008,7 @@
 
         window.openInvQuickAction = async (itemID) => {
             const utente = document.getElementById('inv-user-name').value;
-            if(!utente) return vampireToast("Inserisci prima il tuo nome nel campo sopra!", "error");
+            if(!utente) return vampireToast("Seleziona il tuo nome nel campo sopra!", "error");
             
             const item = inventarioDati.find(i => i.id === itemID);
             
@@ -937,6 +1081,7 @@
                 window.renderArchivioGestione(); 
                 window.renderAdminLogs(); 
                 window.renderAdminSaldoLogs(); 
+                renderVampiriLists();
                 aggiornaStats();
                 vampireToast("Accesso Admin Garantito", "success");
             } else { vampireToast("Codice errato.", "error"); }
@@ -1153,10 +1298,17 @@
 
         // --- INIZIALIZZAZIONE LISTENER ---
 
+        // Listener Membri (AGGIUNTO)
+        onSnapshot(collection(db, "membri"), (snap) => {
+            listaVampiri = snap.docs.map(doc => doc.data());
+            renderVampiriLists();
+        });
+
         // Listener Vendite
         onSnapshot(collection(db, "vendite"), (snapshot) => {
             vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             window.renderVendite();
+            renderClassifiche(); // AGGIUNTO
             aggiornaStats();
             if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione();
         });
