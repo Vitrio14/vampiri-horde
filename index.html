@@ -24,6 +24,7 @@
             --glass-bg: rgba(18, 18, 18, 0.75);
             --glass-border: rgba(197, 160, 89, 0.12);
             --shadow-premium: 0 10px 40px rgba(0,0,0,0.8);
+            --nav-height: 72px; /* Altezza stimata della navbar */
         }
 
         /* Scrollbar Premium */
@@ -72,6 +73,7 @@
             top: 0;
             z-index: 100;
             box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+            height: var(--nav-height);
         }
 
         .logo-container { display: flex; align-items: center; gap: 12px; }
@@ -207,30 +209,54 @@
         }
         .inv-column h3 { font-size: 0.8rem; color: var(--gold-accent); border-bottom: 1px solid var(--blood-red); padding-bottom: 10px; margin-bottom: 15px; text-align: center; }
 
-        /* Tables */
+        /* --- TABELLE CENTRATE E OTTIMIZZATE --- */
         table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.8rem; }
         
         thead th { 
             padding: 10px 15px; 
-            text-align: left; 
+            text-align: center; /* Centra i titoli di default */
             color: var(--gold-dim); 
             font-size: 0.65rem; 
             letter-spacing: 1px; 
             text-transform: uppercase;
             position: sticky; 
             top: 0; 
-            background: transparent; 
+            background: #121212; /* Sfondo pieno per coprire lo scroll */
             z-index: 10;
         }
 
-        td { padding: 15px; background: rgba(255,255,255,0.03); border: none; }
+        td { 
+            padding: 15px; 
+            background: rgba(255,255,255,0.03); 
+            border: none; 
+            text-align: center; /* Centra i dati sotto i titoli */
+        }
+
+        /* Allineamento a sinistra per colonne testuali specifiche per leggibilità */
+        thead th:first-child, td:first-child,
+        thead th:nth-child(2), td:nth-child(2) {
+            text-align: left;
+        }
+
         td:first-child { border-radius: 10px 0 0 10px; }
         td:last-child { border-radius: 0 10px 10px 0; }
         
-        .photo-link { color: #5dade2; text-decoration: none; border-bottom: 1px dashed; font-weight: 600; }
+        .photo-link { color: #5dade2; text-decoration: none; border-bottom: 1px dashed; font-weight: 600; display: inline-block; width: 100%; text-align: center; }
         .ts-label { font-size: 0.65rem; color: #777; display: block; }
 
-        /* Inventory Items */
+        /* Input Giacenza in Gestione Inventario */
+        #admin-table-body input[type="number"] {
+            width: 80px;
+            padding: 6px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            color: var(--gold-accent);
+            border-radius: 6px;
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Inventory Items Display */
         .inv-item {
             background: rgba(255,255,255,0.02);
             padding: 12px 15px;
@@ -264,6 +290,7 @@
 
         /* Archivio Admin specific */
         .week-archive-block { margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 20px; }
+        
         .week-title { 
             background: #1a0000; 
             padding: 12px; 
@@ -272,7 +299,7 @@
             color: var(--gold-accent);
             font-size: 0.8rem;
             position: sticky;
-            top: 0;
+            top: 0; 
             z-index: 11;
             border-radius: 0 10px 10px 0;
         }
@@ -322,7 +349,7 @@
                 <div class="stat-card"><h3>Carbonio (Sett)</h3><p id="tot-qty-sett">0x</p></div>
                 <div class="stat-card"><h3>Carbonio (Tot)</h3><p id="tot-qty-storico">0x</p></div>
                 <div class="stat-card"><h3>Dinastia (Tot)</h3><p id="tot-dinastia-storico">0 cr</p></div>
-                <div class="stat-card"><h3>Settimana</h3><p id="tot-dinastia">0 cr</p></div>
+                <div class="stat-card"><h3>Settimana (Tot)</h3><p id="tot-dinastia">0 cr</p></div>
                 <div class="stat-card"><h3>Ekaton (50%)</h3><p id="tot-ekaton">0 cr</p></div>
                 <div class="stat-card"><h3>Fondo Cassa</h3><p id="tot-saldo-globale">0 cr</p></div>
             </div>
@@ -494,8 +521,7 @@
         </section>
 
 <section id="gestione" class="section">
-    <div style="display: flex; align-items: center; justify-content: center; min-height: 70vh;">
-        
+    <div id="login-container-gestione" style="display: flex; align-items: center; justify-content: center; min-height: 70vh;">
         <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; margin: 0;">
             <h2>Accesso Gestore</h2>
             <div class="form-group">
@@ -503,7 +529,6 @@
             </div>
             <button onclick="checkAccess()">Entra</button>
         </div>
-
     </div>
 
     <div id="admin-content" style="display: none;">
@@ -679,6 +704,7 @@
             document.getElementById(id).classList.add('active');
             const link = Array.from(document.querySelectorAll('.nav-link')).find(l => l.getAttribute('onclick')?.includes(id));
             if(link) link.classList.add('active');
+            window.scrollTo(0, 0); 
         };
 
         window.movimentoSaldo = async () => {
@@ -848,7 +874,7 @@
 
         window.checkAccess = () => {
             if(document.getElementById('admin-pass').value === PASSWORD_GDR) {
-                document.getElementById('login-gestione').style.display = 'none';
+                document.getElementById('login-container-gestione').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
                 renderAdminTable(); renderArchivioGestione(); renderAdminLogs(); renderAdminSaldoLogs();
                 vampireToast("Accesso Admin Garantito", "success");
@@ -916,7 +942,7 @@
                 .filter(i => i.id.toLowerCase().includes(searchTerm))
                 .sort((a,b) => a.id.localeCompare(b.id))
                 .map(i => `
-                <tr><td>${i.id}</td><td>${i.categoria}</td><td><input type="number" value="${i.qty}" onchange="adminUpdateQty('${i.id}', this.value)" style="width:70px"></td><td><button class="btn-delete" onclick="adminDeleteItem('${i.id}')">ELIMINA</button></td></tr>
+                <tr><td>${i.id}</td><td>${i.categoria}</td><td><input type="number" value="${i.qty}" onchange="adminUpdateQty('${i.id}', this.value)"></td><td><button class="btn-delete" onclick="adminDeleteItem('${i.id}')">ELIMINA</button></td></tr>
             `).join('');
         };
 
@@ -981,31 +1007,33 @@
                 
                 return `<div class="week-archive-block">
                     <div class="week-title">${range} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr</div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Data/Ora</th>
-                                <th>Vampiro</th>
-                                <th>Qty</th>
-                                <th>Propria</th>
-                                <th>Dinastia</th>
-                                <th>Note</th>
-                                <th>Azione</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filtered.map(v => `
+                    <div style="overflow-x:auto;">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td style="font-size:0.65rem">${v.dataStr || ''}<br>${v.ora || ''}</td>
-                                    <td>${v.nome}</td>
-                                    <td>${fmt(v.qty)}</td>
-                                    <td>${fmt(v.propria)}</td>
-                                    <td>${fmt(v.dinastia)}</td>
-                                    <td style="font-size: 0.7rem;">${v.note || '-'}</td>
-                                    <td><button class="btn-delete" onclick="adminDeleteVendita('${v.id}')">X</button></td>
-                                </tr>`).join('')}
-                        </tbody>
-                    </table>
+                                    <th>Data/Ora</th>
+                                    <th>Vampiro</th>
+                                    <th>Qty</th>
+                                    <th>Propria</th>
+                                    <th>Dinastia</th>
+                                    <th>Note</th>
+                                    <th>Azione</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filtered.map(v => `
+                                    <tr>
+                                        <td style="font-size:0.65rem">${v.dataStr || ''}<br>${v.ora || ''}</td>
+                                        <td>${v.nome}</td>
+                                        <td>${fmt(v.qty)}</td>
+                                        <td>${fmt(v.propria)}</td>
+                                        <td>${fmt(v.dinastia)}</td>
+                                        <td style="font-size: 0.7rem;">${v.note || '-'}</td>
+                                        <td><button class="btn-delete" onclick="adminDeleteVendita('${v.id}')">X</button></td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>`;
             }).join('');
         };
