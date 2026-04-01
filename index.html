@@ -370,9 +370,9 @@
         
         <section id="vendite" class="section active">
             <div class="stats-grid">
-                <div class="stat-card"><h3>Carbonio (Sett)</h3><p id="tot-qty-sett">0x</p></div>
-                <div class="stat-card"><h3>Settimana (Tot)</h3><p id="tot-dinastia">0 cr</p></div>
-                <div class="stat-card"><h3>Ekaton (50%)</h3><p id="tot-ekaton">0 cr</p></div>
+                <div class="stat-card"><h3>Carbonio (Settimana)</h3><p id="tot-qty-sett">0x</p></div>
+                <div class="stat-card"><h3>Crediti Carbonio (Settimana)</h3><p id="tot-dinastia-sett">0 cr</p></div>
+                <div class="stat-card"><h3>Ekaton (50% Sett)</h3><p id="tot-ekaton-sett">0 cr</p></div>
                 <div class="stat-card"><h3>Fondo Cassa</h3><p id="tot-saldo-globale">0 cr</p></div>
             </div>
 
@@ -554,6 +554,18 @@
             </div>
 
             <div id="admin-content" style="display: none;">
+                
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-color: var(--gold-dim);">
+                        <h3>Carbonio Venduto (TOTALE STORICO)</h3>
+                        <p id="admin-tot-qty-storico" style="color: var(--gold-accent);">0x</p>
+                    </div>
+                    <div class="stat-card" style="border-color: var(--gold-dim);">
+                        <h3>Crediti Carbonio (TOTALE STORICO)</h3>
+                        <p id="admin-tot-dinastia-storico" style="color: var(--gold-accent);">0 cr</p>
+                    </div>
+                </div>
+
                 <div class="vamp-card">
                     <h2>Gestione Saldo Dinastia</h2>
                     <div style="display: flex; gap: 15px; align-items: flex-end;">
@@ -897,7 +909,7 @@
             if(document.getElementById('admin-pass').value === PASSWORD_GDR) {
                 document.getElementById('login-container-gestione').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
-                renderAdminTable(); renderArchivioGestione(); renderAdminLogs(); renderAdminSaldoLogs();
+                renderAdminTable(); renderArchivioGestione(); renderAdminLogs(); renderAdminSaldoLogs(); aggiornaStats();
                 vampireToast("Accesso Admin Garantito", "success");
             } else { vampireToast("Codice errato.", "error"); }
         };
@@ -1025,7 +1037,7 @@
                 const range = getWeekRangeLabel(key);
                 const weekTotalQty = filtered.reduce((sum, v) => sum + v.qty, 0);
                 const weekTotalDinastia = filtered.reduce((sum, v) => sum + v.dinastia, 0);
-                const weekTotalEkaton = Math.floor(weekTotalDinastia * 0.5); // Calcolo quota Ekaton (50% Dinastia)
+                const weekTotalEkaton = Math.floor(weekTotalDinastia * 0.5); 
                 
                 return `<div class="week-archive-block">
                     <div class="week-title">${range} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr | Ekaton: ${fmt(weekTotalEkaton)} cr</div>
@@ -1089,17 +1101,21 @@
             const totaleQtyStorico = vendite.reduce((acc, curr) => acc + curr.qty, 0);
             const totaleDinastiaStorico = vendite.reduce((acc, curr) => acc + curr.dinastia, 0);
             
-            const statsDinastiaSett = document.getElementById('tot-dinastia');
-            const statsEkaton = document.getElementById('tot-ekaton');
+            // UI Pubblica (Home) - Solo SETTIMANALI
+            const statsDinastiaSett = document.getElementById('tot-dinastia-sett');
+            const statsEkatonSett = document.getElementById('tot-ekaton-sett');
             const statsQtySett = document.getElementById('tot-qty-sett');
-            const statsQtyStorico = document.getElementById('tot-qty-storico');
-            const statsDinastiaStorico = document.getElementById('tot-dinastia-storico');
             
             if(statsDinastiaSett) statsDinastiaSett.innerText = fmt(totaleDinastiaSettimana) + " cr";
-            if(statsEkaton) statsEkaton.innerText = fmt(Math.floor(totaleDinastiaSettimana * 0.5)) + " cr";
+            if(statsEkatonSett) statsEkatonSett.innerText = fmt(Math.floor(totaleDinastiaSettimana * 0.5)) + " cr";
             if(statsQtySett) statsQtySett.innerText = fmt(totaleQtySett) + "x";
-            if(statsQtyStorico) statsQtyStorico.innerText = fmt(totaleQtyStorico) + "x";
-            if(statsDinastiaStorico) statsDinastiaStorico.innerText = fmt(totaleDinastiaStorico) + " cr";
+
+            // UI Riservata (Gestione) - TOTALI STORICI
+            const adminQtyStorico = document.getElementById('admin-tot-qty-storico');
+            const adminDinastiaStorico = document.getElementById('admin-tot-dinastia-storico');
+
+            if(adminQtyStorico) adminQtyStorico.innerText = fmt(totaleQtyStorico) + "x";
+            if(adminDinastiaStorico) adminDinastiaStorico.innerText = fmt(totaleDinastiaStorico) + " cr";
         }
     </script>
 </body>
