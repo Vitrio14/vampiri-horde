@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionale Vampiri | Horde RP</title>
     <link rel="shortcut icon" href="logo.ico" type="image/x-icon">
+    <link rel="preload" href="banner.png" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -24,7 +25,7 @@
             --glass-bg: rgba(18, 18, 18, 0.75);
             --glass-border: rgba(197, 160, 89, 0.12);
             --shadow-premium: 0 10px 40px rgba(0,0,0,0.8);
-            --nav-height: 72px; /* Altezza stimata della navbar */
+            --nav-height: 72px; 
         }
 
         /* Scrollbar Premium */
@@ -38,9 +39,15 @@
             background-color: var(--dark-void);
             color: var(--text-light);
             font-family: 'Quicksand', sans-serif;
+            /* Fallback colore solido per evitare il salto bianco/nero prima del caricamento immagine */
             background-image: 
                 radial-gradient(circle at 10% 20%, rgba(139, 0, 0, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(197, 160, 89, 0.05) 0%, transparent 40%);
+                radial-gradient(circle at 90% 80%, rgba(197, 160, 89, 0.05) 0%, transparent 40%),
+                linear-gradient(rgba(7, 7, 7, 0.85), rgba(7, 7, 7, 0.85)), 
+                url('banner.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             background-attachment: fixed;
             min-height: 100vh;
             line-height: 1.6;
@@ -52,12 +59,34 @@
         #global-lock {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--dark-void);
+            background-color: #000;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                url('banner.png');
+            background-size: cover;
+            background-position: center;
             z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(15px);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Login Gestione Overlay - Schermo Intero Fisso */
+        #login-container-gestione {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), 
+                url('banner.png');
+            background-size: cover;
+            background-position: center;
+            z-index: 500; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
         }
 
         /* Navbar */
@@ -107,6 +136,9 @@
         .container { max-width: 1250px; margin: 2rem auto; padding: 0 30px; flex: 1; }
         .section { display: none; animation: slideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
         .section.active { display: block; }
+        
+        /* Rimuoviamo l'animazione specifica per la gestione per evitare scatti visivi durante il check password */
+        #gestione.active { animation: none; }
 
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -214,14 +246,14 @@
         
         thead th { 
             padding: 10px 15px; 
-            text-align: center; /* Centra i titoli di default */
+            text-align: center; 
             color: var(--gold-dim); 
             font-size: 0.65rem; 
             letter-spacing: 1px; 
             text-transform: uppercase;
             position: sticky; 
             top: 0; 
-            background: #121212; /* Sfondo pieno per coprire lo scroll */
+            background: #121212; 
             z-index: 10;
         }
 
@@ -229,10 +261,9 @@
             padding: 15px; 
             background: rgba(255,255,255,0.03); 
             border: none; 
-            text-align: center; /* Centra i dati sotto i titoli */
+            text-align: center; 
         }
 
-        /* Allineamento a sinistra per colonne testuali specifiche per leggibilità */
         thead th:first-child, td:first-child,
         thead th:nth-child(2), td:nth-child(2) {
             text-align: left;
@@ -244,7 +275,6 @@
         .photo-link { color: #5dade2; text-decoration: none; border-bottom: 1px dashed; font-weight: 600; display: inline-block; width: 100%; text-align: center; }
         .ts-label { font-size: 0.65rem; color: #777; display: block; }
 
-        /* Input Giacenza in Gestione Inventario */
         #admin-table-body input[type="number"] {
             width: 80px;
             padding: 6px;
@@ -256,7 +286,6 @@
             font-family: 'Cinzel', serif;
         }
 
-        /* Inventory Items Display */
         .inv-item {
             background: rgba(255,255,255,0.02);
             padding: 12px 15px;
@@ -271,7 +300,6 @@
         .inv-item:hover { background: rgba(197, 160, 89, 0.05); border-left-color: var(--gold-accent); }
         .inv-qty { font-size: 1rem; font-weight: bold; color: var(--gold-accent); font-family: 'Cinzel', serif; }
 
-        /* Footer */
         footer {
             padding: 40px;
             text-align: center;
@@ -282,13 +310,11 @@
         }
         footer strong { color: var(--gold-dim); }
 
-        /* Logs */
         .log-entry { padding: 15px; border-radius: 12px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); margin-bottom: 10px; }
         .log-main { display: flex; justify-content: space-between; align-items: center; }
         .log-causale { font-style: italic; color: var(--gold-dim); font-size: 0.75rem; margin-top: 5px; padding-left: 10px; border-left: 2px solid var(--blood-red); }
         .log-time { font-size: 0.7rem; color: #666; font-family: monospace; }
 
-        /* Archivio Admin specific */
         .week-archive-block { margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 20px; }
         
         .week-title { 
@@ -318,7 +344,7 @@
 <body>
 
     <div id="global-lock">
-        <div class="vamp-card" style="max-width: 380px; text-align: center;">
+        <div class="vamp-card" style="max-width: 380px; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
             <h2 style="border: none; text-align: center;">Verifica Richiesta</h2>
             <p style="font-size: 0.7rem; margin-bottom: 25px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Inserire il codice d'accesso</p>
             <input type="password" id="global-pass" style="text-align: center; letter-spacing: 10px; font-size: 1.2rem; margin-bottom: 20px;" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter') unlockSite()">
@@ -520,19 +546,18 @@
             <div class="scroll-container"><div id="inv-logs"></div></div>
         </section>
 
-<section id="gestione" class="section">
-    <div id="login-container-gestione" style="display: flex; align-items: center; justify-content: center; min-height: 70vh;">
-        <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; margin: 0;">
-            <h2>Accesso Gestore</h2>
-            <div class="form-group">
-                <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;" onkeydown="if(event.key==='Enter') checkAccess()" placeholder="••••">
+        <section id="gestione" class="section">
+            <div id="login-container-gestione">
+                <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
+                    <h2>Accesso Gestore</h2>
+                    <div class="form-group">
+                        <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;" onkeydown="if(event.key==='Enter') checkAccess()" placeholder="••••">
+                    </div>
+                    <button onclick="checkAccess()">Entra</button>
+                </div>
             </div>
-            <button onclick="checkAccess()">Entra</button>
-        </div>
-    </div>
 
-    <div id="admin-content" style="display: none;">
-                
+            <div id="admin-content" style="display: none;">
                 <div class="vamp-card">
                     <h2>Gestione Saldo Dinastia</h2>
                     <div style="display: flex; gap: 15px; align-items: flex-end;">
