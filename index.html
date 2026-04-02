@@ -75,10 +75,26 @@
 
         <section id="vendite" class="section">
             <div class="stats-grid">
-                <div class="stat-card"><h3>Carbonio (Settimana)</h3><p id="tot-qty-sett">0x</p></div>
-                <div class="stat-card"><h3>Crediti Carbonio (Settimana)</h3><p id="tot-dinastia-sett">0 cr</p></div>
-                <div class="stat-card"><h3>Ekaton (Settimana)</h3><p id="tot-ekaton-sett">0 cr</p></div>
-                <div class="stat-card"><h3>Fondo Cassa</h3><p id="tot-saldo-globale">0 cr</p></div>
+                <div class="stat-card" style="border-color: var(--gold-dim);">
+                    <h3>Carbonio (Settimana)</h3>
+                    <p id="tot-qty-sett" style="color: var(--gold-accent);">0x</p>
+                </div>
+                <div class="stat-card" style="border-color: var(--gold-dim);">
+                    <h3>Crediti Carbonio (Settimana)</h3>
+                    <p id="tot-dinastia-sett" style="color: var(--gold-accent);">0 cr</p>
+                </div>
+                <div class="stat-card" style="border-color: var(--gold-dim);">
+                    <h3>Ekaton (Settimana)</h3>
+                    <p id="tot-ekaton-sett" style="color: var(--gold-accent);">0 cr</p>
+                </div>
+                <div class="stat-card" style="border-color: var(--gold-dim);">
+                    <h3>Vendite (Freq. Sett.)</h3>
+                    <p id="tot-count-sett" style="color: var(--gold-accent);">0</p>
+                </div>
+                <div class="stat-card" style="border-color: var(--gold-dim);">
+                    <h3>Fondo Cassa</h3>
+                    <p id="tot-saldo-globale" style="color: var(--gold-accent);">0 cr</p>
+                </div>
             </div>
 
             <div class="vamp-card">
@@ -140,7 +156,6 @@
                         <input type="number" id="saldo-importo" placeholder="0" onkeydown="if(event.key==='Enter') movimentoSaldo()">
                     </div>
                 </div>
-                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>Azione</label>
@@ -156,7 +171,6 @@
                 </div>
                 <button onclick="movimentoSaldo()">Registra Transazione</button>
             </div>
-
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Storico Transazioni</h2>
             <div class="search-box">
                 <input type="text" id="search-saldo-logs" placeholder="Cerca..." onkeyup="renderSaldoLogs()">
@@ -172,10 +186,10 @@
                     <select id="calc-search-name" class="vampiro-select-list"></select>
                 </div>
                 <button onclick="eseguiCalcolo()">Calcola</button>
-
                 <div id="calc-result" class="calc-result-box">
                     <h3 id="calc-res-nome" style="color: var(--gold-accent); margin-bottom: 15px;">-</h3>
                     <div class="calc-item"><span>Carbonio Venduto</span><span id="calc-res-qty">0</span></div>
+                    <div class="calc-item"><span>Numero Vendite Sett.</span><span id="calc-res-count">0</span></div>
                     <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-tot">0 cr</span></div>
                     <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 15px; padding-top: 15px;">
                         <span style="color: var(--success-green);">Quota Propria (40%)</span>
@@ -185,6 +199,7 @@
                         <span style="color: var(--withdraw-red);">Tributo Dinastia (60%)</span>
                         <span id="calc-res-din" style="color: var(--withdraw-red);">0 cr</span>
                     </div>
+                    <div id="calc-res-lista-dettaglio" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px; font-size: 0.7rem;"></div>
                 </div>
             </div>
         </section>
@@ -198,7 +213,6 @@
                     <select id="inv-user-name" class="vampiro-select-list"></select>
                 </div>
             </div>
-
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Stato Depositi</h2>
             <div class="search-box">
                 <input type="text" id="search-inventario" placeholder="Cerca oggetto..." onkeyup="renderInventario()">
@@ -208,13 +222,11 @@
                 <div class="inv-column"><h3>Deposito 2</h3><div class="scroll-container" id="display-inv-2" style="max-height: 250px;"></div></div>
                 <div class="inv-column"><h3>Deposito 3</h3><div class="scroll-container" id="display-inv-3" style="max-height: 250px;"></div></div>
             </div>
-
             <h2 style="font-size: 0.8rem; margin-top: 40px; margin-bottom: 15px;">Cronologia Movimenti</h2>
             <div class="search-box">
                 <input type="text" id="search-logs" placeholder="Cerca nel log..." onkeyup="renderLogs()">
             </div>
             <div class="scroll-container"><div id="inv-logs"></div></div>
-            
             <div style="display:none;">
                 <select id="inv-cat-select"></select>
                 <select id="inv-select-item"></select>
@@ -279,13 +291,17 @@
                         <p id="admin-tot-qty-storico" style="color: var(--gold-accent);">0x</p>
                     </div>
                     <div class="stat-card" style="border-color: var(--gold-dim);">
-                        <h3>Crediti Carbonio (TOTALE STORICO)</h3>
+                        <h3>Crediti Dinastia (TOTALE STORICO)</h3>
                         <p id="admin-tot-dinastia-storico" style="color: var(--gold-accent);">0 cr</p>
                     </div>
-                    <div class="stat-card" style="border-color: var(--gold-accent);">
-    <h3>Crediti Ekaton (TOTALE STORICO)</h3>
-    <p id="admin-tot-ekaton-storico" style="color: var(--gold-accent);">0 cr</p>
-</div>
+                    <div class="stat-card" style="border-color: var(--gold-dim);">
+                        <h3>Crediti Ekaton (TOTALE STORICO)</h3>
+                        <p id="admin-tot-ekaton-storico" style="color: var(--gold-accent);">0 cr</p>
+                    </div>
+                    <div class="stat-card" style="border-color: var(--gold-dim);">
+                        <h3>Vendite Totali (STORICO)</h3>
+                        <p id="admin-tot-count-storico" style="color: var(--gold-accent);">0</p>
+                    </div>
                 </div>
 
                 <div class="vamp-card">
@@ -314,7 +330,6 @@
                         <div class="form-group" style="margin:0"><label>Q.tà</label><input type="number" id="admin-item-qty" value="0" onkeydown="if(event.key==='Enter') adminUpdateItem()"></div>
                         <button onclick="adminUpdateItem()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
                     </div>
-                    
                     <div class="search-box">
                         <input type="text" id="search-admin-inv" placeholder="Cerca..." onkeyup="renderAdminTable()">
                     </div>
@@ -350,7 +365,6 @@
     </div>
 
     <footer>Horde RP - Gestionale Vampiri &copy; 2026 • Vitrio</footer>
-
     <script type="module" src="script.js"></script>
 </body>
 </html>
