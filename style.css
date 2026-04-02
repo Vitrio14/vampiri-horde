@@ -211,5 +211,28 @@ td:last-child { border-radius: 0 10px 10px 0; }
 .rank-top2 { border-left: 3px solid #c0c0c0; }
 .rank-top3 { border-left: 3px solid #cd7f32; }
 
+/* --- REGOLAZIONE NOTIFICHE A DESTRA PICCOLE E BASSE --- */
+.swal2-container.swal2-top-end {
+    top: 80px !important;    /* Cambia questo numero (es. 200px, 300px) per mandarle più giù */
+    right: 20px !important;   /* Distanza dal bordo destro */
+    width: auto !important;   /* Impedisce che diventi enorme */
+}
+
+.swal2-popup.swal2-toast {
+    width: 250px !important;      /* Forza la larghezza piccola e fissa */
+    font-size: 0.75rem !important; /* Testo fine ed elegante */
+    padding: 10px !important;
+    background: #121212 !important;
+    border: 1px solid var(--gold-accent) !important; /* Bordo oro tipico del sito */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+}
+
+/* Rimpicciolisce l'icona per farla stare bene nel box piccolo */
+.swal2-toast .swal2-icon {
+    min-width: 25px !important;
+    height: 25px !important;
+    margin: 0 10px 0 0 !important;
+}
+
 footer { padding: 40px; text-align: center; font-size: 0.65rem; color: #555; letter-spacing: 1px; text-transform: uppercase; }
 footer strong { color: var(--gold-dim); }

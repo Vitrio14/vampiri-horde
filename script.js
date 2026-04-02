@@ -34,12 +34,54 @@ const fmt = (n) => {
     return new Intl.NumberFormat('it-IT').format(n);
 };
 
+// --- FUNZIONE NOTIFICA (ESPORTATA IN WINDOW) ---
 const vampireToast = (msg, icon = 'info') => {
     const Toast = Swal.mixin({
-        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true,
-        background: '#121212', color: '#e0e0e0', iconColor: icon === 'success' ? '#2ecc71' : (icon === 'error' ? '#e74c3c' : '#c5a059')
+        toast: true, 
+        position: 'top-end', 
+        showConfirmButton: false, 
+        timer: 3000, 
+        timerProgressBar: true,
+        background: '#121212', 
+        color: '#e0e0e0', 
+        iconColor: icon === 'success' ? '#2ecc71' : (icon === 'error' ? '#e74c3c' : '#c5a059')
     });
     Toast.fire({ icon: icon, title: msg });
+};
+window.vampireToast = vampireToast; // <--- FONDAMENTALE PER FARLA FUNZIONARE
+
+// --- LOGICA SITO (LOGIN GLOBALE) ---
+window.unlockSite = () => {
+    const passInput = document.getElementById('global-pass').value;
+    
+    if(!passInput) {
+        return vampireToast("Inserire il codice d'accesso per procedere.", "error");
+    }
+
+    if(passInput === PASSWORD_GLOBAL) {
+        document.getElementById('global-lock').style.display = 'none';
+        showSection('generale'); 
+        vampireToast("Accesso alla Dinastia consentito.", "success");
+    } else {
+        vampireToast("Codice errato. Il sigillo resta intatto.", "error");
+        Swal.fire({ 
+            title: "Sigillo Intatto", 
+            text: "Codice errato.", 
+            icon: "error", 
+            background: '#121212', 
+            color: '#e0e0e0',
+            confirmButtonColor: '#8b0000'
+        });
+    }
+};
+
+window.showSection = (id) => {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const link = Array.from(document.querySelectorAll('.nav-link')).find(l => l.getAttribute('onclick')?.includes(id));
+    if(link) link.classList.add('active');
+    window.scrollTo(0, 0); 
 };
 
 // --- GESTIONE DINAMICA ---
@@ -57,12 +99,15 @@ window.addDinamico = async (col) => {
     document.getElementById(pref + 'desc').value = "";
     document.getElementById(pref + 'link').value = "";
     document.getElementById(pref + 'firma').value = "";
-    vampireToast("Pubblicato!", "success");
+    vampireToast("Elemento pubblicato con successo!", "success");
 };
 
 window.delDinamico = async (col, id) => {
     const res = await Swal.fire({ title: 'Rimuovere?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111', color: '#fff' });
-    if(res.isConfirmed) await deleteDoc(doc(db, col, id));
+    if(res.isConfirmed) {
+        await deleteDoc(doc(db, col, id));
+        vampireToast("Elemento rimosso correttamente.", "success");
+    }
 };
 
 function renderDinamici() {
@@ -105,12 +150,15 @@ window.aggiungiVampiro = async () => {
     await setDoc(doc(db, "membri", nome), { nome, grado });
     document.getElementById('admin-vamp-nome').value = "";
     document.getElementById('admin-vamp-grado').value = "";
-    vampireToast("Vampiro aggiunto", "success");
+    vampireToast("Vampiro aggiunto alla Dinastia.", "success");
 };
 
 window.eliminaVampiro = async (id) => {
     const res = await Swal.fire({ title: 'Eliminare membro?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111', color: '#fff' });
-    if(res.isConfirmed) await deleteDoc(doc(db, "membri", id));
+    if(res.isConfirmed) {
+        await deleteDoc(doc(db, "membri", id));
+        vampireToast("Vampiro rimosso dal registro.", "success");
+    }
 };
 
 function renderVampiriLists() {
@@ -161,41 +209,22 @@ function renderClassifiche() {
     document.getElementById('top-sempre-box').innerHTML = generateHtml(rankSempre);
 }
 
-// --- LOGICA SITO ---
-window.unlockSite = () => {
-    if(document.getElementById('global-pass').value === PASSWORD_GLOBAL) {
-        document.getElementById('global-lock').style.display = 'none';
-        showSection('generale'); vampireToast("Accesso alla Dinasta consentito", "success");
-    } else {
-        Swal.fire({ title: "Sigillo Intatto", text: "Codice errato.", icon: "error", background: '#121212', color: '#e0e0e0' });
-    }
-};
-
-window.showSection = (id) => {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    const link = Array.from(document.querySelectorAll('.nav-link')).find(l => l.getAttribute('onclick')?.includes(id));
-    if(link) link.classList.add('active');
-    window.scrollTo(0, 0); 
-};
-
 // --- LOGICA SALDO ---
 window.movimentoSaldo = async () => {
     const nome = document.getElementById('saldo-nome').value;
     const importo = parseInt(document.getElementById('saldo-importo').value);
     const azione = document.getElementById('saldo-azione').value;
     const motivo = document.getElementById('saldo-motivo').value;
-    if(!nome || !importo || !motivo) return vampireToast("Compila tutti i campi.", "error");
+    if(!nome || !importo || !motivo) return vampireToast("Compila tutti i campi richiesti.", "error");
     const nuovoSaldo = azione === "preleva" ? saldoGlobale - importo : saldoGlobale + importo;
-    if(nuovoSaldo < 0) return vampireToast("Saldo insufficiente!", "error");
+    if(nuovoSaldo < 0) return vampireToast("Saldo insufficiente per questa azione!", "error");
     const now = new Date();
     await setDoc(doc(db, "config", "saldo"), { valore: nuovoSaldo }, { merge: true });
     await addDoc(collection(db, "saldo_logs"), {
         utente: nome, tipo: azione, qty: importo, motivo, timestamp: Date.now(), 
         dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT')
     });
-    vampireToast("Transazione completata.", "success");
+    vampireToast(`Operazione di ${azione} completata.`, "success");
     document.getElementById('saldo-importo').value = ""; document.getElementById('saldo-motivo').value = "";
 };
 
@@ -233,7 +262,7 @@ function popolaFiltroSettimane() {
 window.eseguiCalcolo = () => {
     const nomeInput = document.getElementById('calc-search-name').value;
     const periodo = document.getElementById('calc-period-filter').value;
-    if(!nomeInput) return vampireToast("Seleziona un vampiro", "error");
+    if(!nomeInput) return vampireToast("Seleziona un vampiro per il calcolo.", "error");
     
     const resBox = document.getElementById('calc-result');
     let filtrati = [];
@@ -247,7 +276,10 @@ window.eseguiCalcolo = () => {
         filtrati = vendite.filter(v => v.settimanaEtichetta === periodo && v.nome === nomeInput);
     }
 
-    if(filtrati.length === 0) { resBox.style.display = "none"; return vampireToast("Nessun record trovato.", "error"); }
+    if(filtrati.length === 0) { 
+        resBox.style.display = "none"; 
+        return vampireToast("Nessun record trovato per i parametri scelti.", "error"); 
+    }
     
     const totQty = filtrati.reduce((a, b) => a + b.qty, 0);
     const totCr = filtrati.reduce((a, b) => a + b.totale, 0);
@@ -266,7 +298,8 @@ window.eseguiCalcolo = () => {
         </div>
     `).join('');
     document.getElementById('calc-res-lista-dettaglio').innerHTML = "<strong>Dettaglio Vendite:</strong>" + listaHtml;
-    resBox.style.display = "block"; vampireToast("Resoconto generato.", "success");
+    resBox.style.display = "block"; 
+    vampireToast("Resoconto generato con successo.", "success");
 };
 
 // --- LOGICA VENDITE ---
@@ -275,7 +308,7 @@ window.registraVendita = async () => {
     const qty = parseInt(document.getElementById('vamp-qty').value);
     const foto = document.getElementById('vamp-foto').value || "#";
     const note = document.getElementById('vamp-note').value || "";
-    if(!nome || !qty) return vampireToast("Dati incompleti.", "error");
+    if(!nome || !qty) return vampireToast("Dati incompleti per la registrazione.", "error");
     const tot = qty * VALORE_UNITARIO;
     const now = new Date();
     await addDoc(collection(db, "vendite"), {
@@ -283,7 +316,7 @@ window.registraVendita = async () => {
         timestamp: Date.now(), dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT'),
         settimanaEtichetta: getWeekYearKey(new Date())
     });
-    vampireToast("Vendita registrata.", "success");
+    vampireToast("Vendita sigillata nel registro.", "success");
     document.getElementById('vamp-qty').value = ""; document.getElementById('vamp-note').value = "";
 };
 
@@ -318,7 +351,7 @@ window.renderInventario = () => {
 
 window.openInvQuickAction = async (itemID) => {
     const utente = document.getElementById('inv-user-name').value;
-    if(!utente) return vampireToast("Seleziona il tuo nome nel campo sopra!", "error");
+    if(!utente) return vampireToast("Identificati nel campo 'Tuo Nome'.", "error");
     const item = inventarioDati.find(i => i.id === itemID);
     const { value: formValues } = await Swal.fire({
         title: itemID,
@@ -332,16 +365,16 @@ window.openInvQuickAction = async (itemID) => {
 
     if (formValues) {
         const { action, qty, motivo } = formValues;
-        if(!qty || !motivo) return vampireToast("Dati mancanti!", "error");
+        if(!qty || !motivo) return vampireToast("Dati mancanti per l'inventario.", "error");
         const newQty = action === "prendi" ? item.qty - qty : item.qty + qty;
-        if(newQty < 0) return vampireToast("Scorte insufficienti!", "error");
+        if(newQty < 0) return vampireToast("Scorte insufficienti nel deposito.", "error");
         const now = new Date();
         await updateDoc(doc(db, "inventario", itemID), { qty: newQty });
         await addDoc(collection(db, "logs"), { 
             utente, tipo: action, item: itemID, qty, motivo, timestamp: Date.now(), 
             dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT') 
         });
-        vampireToast("Movimento registrato.", "success");
+        vampireToast(`Oggetto ${action === 'prendi' ? 'prelevato' : 'depositato'} con successo.`, "success");
     }
 };
 
@@ -360,20 +393,27 @@ window.renderLogs = () => {
         </div>`).join('');
 };
 
-// --- LOGICA ADMIN ---
+// --- LOGICA ADMIN (GESTIONE) ---
 window.checkAccess = () => {
-    if(document.getElementById('admin-pass').value === PASSWORD_GDR) {
+    const passInput = document.getElementById('admin-pass').value;
+    if(!passInput) {
+        return vampireToast("Inserire la password gestore.", "error");
+    }
+    if(passInput === PASSWORD_GDR) {
         document.getElementById('login-container-gestione').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
         window.renderAdminTable(); window.renderArchivioGestione(); window.renderAdminLogs(); window.renderAdminSaldoLogs();
-        renderVampiriLists(); renderDinamici(); aggiornaStats(); vampireToast("Accesso Admin Garantito", "success");
-    } else { vampireToast("Codice errato.", "error"); }
+        renderVampiriLists(); renderDinamici(); aggiornaStats(); 
+        vampireToast("Accesso Gestore garantito.", "success");
+    } else { 
+        vampireToast("Accesso negato. Password errata.", "error"); 
+    }
 };
 
 window.adminUpdateSaldo = async () => {
     const v = parseInt(document.getElementById('admin-saldo-val').value);
     await setDoc(doc(db, "config", "saldo"), { valore: v }, { merge: true });
-    vampireToast("Saldo aggiornato correttamente.", "success");
+    vampireToast("Saldo globale aggiornato manualmente.", "success");
 };
 
 window.adminUpdateItem = async () => {
@@ -381,32 +421,45 @@ window.adminUpdateItem = async () => {
     const c = document.getElementById('admin-item-cat').value;
     const q = parseInt(document.getElementById('admin-item-qty').value) || 0;
     if(n) await setDoc(doc(db, "inventario", n), { qty: q, categoria: c });
-    document.getElementById('admin-item-name').value = ""; vampireToast("Database aggiornato.", "success");
+    document.getElementById('admin-item-name').value = ""; 
+    vampireToast("Elemento inventario aggiornato/creato.", "success");
 };
 
 window.adminUpdateQty = async (item, val) => {
     await updateDoc(doc(db, "inventario", item), { qty: parseInt(val) });
-    vampireToast("Quantità manipolata.", "success");
+    vampireToast(`Quantità di ${item} modificata.`, "success");
 };
 
 window.adminDeleteItem = async (item) => {
     const res = await Swal.fire({ title: 'Eliminare?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
-    if(res.isConfirmed) { await deleteDoc(doc(db, "inventario", item)); vampireToast("Elemento rimosso.", "success"); }
+    if(res.isConfirmed) { 
+        await deleteDoc(doc(db, "inventario", item)); 
+        vampireToast("Oggetto eliminato dal database.", "success"); 
+    }
 };
 
 window.adminDeleteVendita = async (id) => {
     const res = await Swal.fire({ title: 'Elimina Vendita', icon: 'question', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
-    if(res.isConfirmed) { await deleteDoc(doc(db, "vendite", id)); vampireToast("Record eliminato.", "success"); }
+    if(res.isConfirmed) { 
+        await deleteDoc(doc(db, "vendite", id)); 
+        vampireToast("Record di vendita eliminato.", "success"); 
+    }
 };
 
 window.adminDeleteLog = async (id) => {
     const res = await Swal.fire({ title: 'Elimina Log', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
-    if(res.isConfirmed) { await deleteDoc(doc(db, "logs", id)); vampireToast("Log epurato.", "success"); }
+    if(res.isConfirmed) { 
+        await deleteDoc(doc(db, "logs", id)); 
+        vampireToast("Log di movimento epurato.", "success"); 
+    }
 };
 
 window.adminDeleteSaldoLog = async (id) => {
     const res = await Swal.fire({ title: 'Rimuovi Log Saldo?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
-    if(res.isConfirmed) { await deleteDoc(doc(db, "saldo_logs", id)); vampireToast("Log rimosso.", "success"); }
+    if(res.isConfirmed) { 
+        await deleteDoc(doc(db, "saldo_logs", id)); 
+        vampireToast("Log transazione rimosso.", "success"); 
+    }
 };
 
 window.renderAdminTable = () => {
@@ -473,7 +526,24 @@ window.renderArchivioGestione = () => {
     }).join('');
 };
 
-window.logoutAdmin = () => location.reload();
+window.logoutAdmin = async () => {
+    const res = await Swal.fire({
+        title: 'Chiudere la sessione?',
+        text: "Dovrai inserire nuovamente la password gestore.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8b0000',
+        background: '#111',
+        color: '#fff'
+    });
+    
+    if(res.isConfirmed) {
+        vampireToast("Sessione chiusa correttamente.", "info");
+        setTimeout(() => {
+            location.reload();
+        }, 800);
+    }
+};
 
 window.popolaSelectOggetti = () => {
     const select = document.getElementById('inv-select-item');

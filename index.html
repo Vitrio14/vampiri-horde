@@ -7,7 +7,10 @@
     <link rel="shortcut icon" href="logo.ico" type="image/x-icon">
     <link rel="preload" href="banner.png" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module" src="script.js" defer></script>
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,8 +19,8 @@
         <div class="vamp-card" style="max-width: 380px; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
             <h2 style="border: none; text-align: center;">Verifica Richiesta</h2>
             <p style="font-size: 0.7rem; margin-bottom: 25px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Inserire il codice d'accesso</p>
-            <input type="password" id="global-pass" style="text-align: center; letter-spacing: 10px; font-size: 1.2rem; margin-bottom: 20px;" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter') unlockSite()">
-            <button onclick="unlockSite()">Entra</button>
+            <input type="password" id="global-pass" style="text-align: center; letter-spacing: 10px; font-size: 1.2rem; margin-bottom: 20px;" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter') window.unlockSite()">
+            <button onclick="window.unlockSite()">Entra</button>
         </div>
     </div>
 
@@ -27,12 +30,12 @@
             <h1>Horde RP <span style="font-weight:300; opacity:0.4; margin:0 5px;">|</span> Gestionale Vampiri</h1>
         </div>
         <div class="nav-links">
-            <div class="nav-link active" onclick="showSection('generale')">Generale</div>
-            <div class="nav-link" onclick="showSection('vendite')">Vendite</div>
-            <div class="nav-link" onclick="showSection('saldo')">Saldo</div>
-            <div class="nav-link" onclick="showSection('calcolo')">Calcolo</div>
-            <div class="nav-link" onclick="showSection('inventario')">Inventario</div>
-            <div class="nav-link" onclick="showSection('gestione')">Gestione</div>
+            <div class="nav-link active" onclick="window.showSection('generale')">Generale</div>
+            <div class="nav-link" onclick="window.showSection('vendite')">Vendite</div>
+            <div class="nav-link" onclick="window.showSection('saldo')">Saldo</div>
+            <div class="nav-link" onclick="window.showSection('calcolo')">Calcolo</div>
+            <div class="nav-link" onclick="window.showSection('inventario')">Inventario</div>
+            <div class="nav-link" onclick="window.showSection('gestione')">Gestione</div>
             <a href="https://postimages.org" target="_blank" class="nav-link">Foto</a>
             <a href="https://docs.google.com/document/d/1L3r3aqR_1Yce50MWRaQd5QEc9lyu1Qdr0IczYxeUiBY/edit?usp=sharing" target="_blank" class="nav-link">Manuale</a>
         </div>
@@ -106,23 +109,23 @@
                     </div>
                     <div class="form-group">
                         <label>Quantità Carbonio</label>
-                        <input type="number" id="vamp-qty" placeholder="0" onkeydown="if(event.key==='Enter') registraVendita()">
+                        <input type="number" id="vamp-qty" placeholder="0" onkeydown="if(event.key==='Enter') window.registraVendita()">
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Link Prova Fotografica</label>
-                    <input type="url" id="vamp-foto" placeholder="https://imgur.com/..." onkeydown="if(event.key==='Enter') registraVendita()">
+                    <input type="url" id="vamp-foto" placeholder="https://imgur.com/..." onkeydown="if(event.key==='Enter') window.registraVendita()">
                 </div>
                 <div class="form-group">
                     <label>Note / Causale</label>
-                    <input type="text" id="vamp-note" placeholder="Note..." onkeydown="if(event.key==='Enter') registraVendita()">
+                    <input type="text" id="vamp-note" placeholder="Note..." onkeydown="if(event.key==='Enter') window.registraVendita()">
                 </div>
-                <button onclick="registraVendita()">Registra Vendita</button>
+                <button onclick="window.registraVendita()">Registra Vendita</button>
             </div>
 
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Vendite della Settimana</h2>
             <div class="search-box">
-                <input type="text" id="search-vendite" placeholder="Cerca..." onkeyup="renderVendite()">
+                <input type="text" id="search-vendite" placeholder="Cerca..." onkeyup="window.renderVendite()">
             </div>
             <div class="scroll-container">
                 <table>
@@ -153,7 +156,7 @@
                     </div>
                     <div class="form-group">
                         <label>Importo (cr)</label>
-                        <input type="number" id="saldo-importo" placeholder="0" onkeydown="if(event.key==='Enter') movimentoSaldo()">
+                        <input type="number" id="saldo-importo" placeholder="0" onkeydown="if(event.key==='Enter') window.movimentoSaldo()">
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -166,14 +169,14 @@
                     </div>
                     <div class="form-group">
                         <label>Motivazione</label>
-                        <input type="text" id="saldo-motivo" placeholder="Motivo..." onkeydown="if(event.key==='Enter') movimentoSaldo()">
+                        <input type="text" id="saldo-motivo" placeholder="Motivo..." onkeydown="if(event.key==='Enter') window.movimentoSaldo()">
                     </div>
                 </div>
-                <button onclick="movimentoSaldo()">Registra Transazione</button>
+                <button onclick="window.movimentoSaldo()">Registra Transazione</button>
             </div>
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Storico Transazioni</h2>
             <div class="search-box">
-                <input type="text" id="search-saldo-logs" placeholder="Cerca..." onkeyup="renderSaldoLogs()">
+                <input type="text" id="search-saldo-logs" placeholder="Cerca..." onkeyup="window.renderSaldoLogs()">
             </div>
             <div class="scroll-container"><div id="saldo-logs-box"></div></div>
         </section>
@@ -192,7 +195,7 @@
                         <option value="all">Totale Storico</option>
                     </select>
                 </div>
-                <button onclick="eseguiCalcolo()">Calcola</button>
+                <button onclick="window.eseguiCalcolo()">Calcola</button>
                 <div id="calc-result" class="calc-result-box">
                     <h3 id="calc-res-nome" style="color: var(--gold-accent); margin-bottom: 15px;">-</h3>
                     <div class="calc-item"><span>Carbonio Venduto</span><span id="calc-res-qty">0</span></div>
@@ -222,7 +225,7 @@
             </div>
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Stato Depositi</h2>
             <div class="search-box">
-                <input type="text" id="search-inventario" placeholder="Cerca oggetto..." onkeyup="renderInventario()">
+                <input type="text" id="search-inventario" placeholder="Cerca oggetto..." onkeyup="window.renderInventario()">
             </div>
             <div class="inv-layout-3col">
                 <div class="inv-column"><h3>Deposito 1</h3><div class="scroll-container" id="display-inv-1" style="max-height: 250px;"></div></div>
@@ -231,16 +234,9 @@
             </div>
             <h2 style="font-size: 0.8rem; margin-top: 40px; margin-bottom: 15px;">Cronologia Movimenti</h2>
             <div class="search-box">
-                <input type="text" id="search-logs" placeholder="Cerca nel log..." onkeyup="renderLogs()">
+                <input type="text" id="search-logs" placeholder="Cerca nel log..." onkeyup="window.renderLogs()">
             </div>
             <div class="scroll-container"><div id="inv-logs"></div></div>
-            <div style="display:none;">
-                <select id="inv-cat-select"></select>
-                <select id="inv-select-item"></select>
-                <input type="number" id="inv-qty-move">
-                <select id="inv-action"></select>
-                <input type="text" id="inv-motivo">
-            </div>
         </section>
 
         <section id="gestione" class="section">
@@ -248,9 +244,9 @@
                 <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
                     <h2>Accesso Gestore</h2>
                     <div class="form-group">
-                        <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;" onkeydown="if(event.key==='Enter') checkAccess()" placeholder="••••">
+                        <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;" onkeydown="if(event.key==='Enter') window.checkAccess()" placeholder="••••">
                     </div>
-                    <button onclick="checkAccess()">Entra</button>
+                    <button onclick="window.checkAccess()">Entra</button>
                 </div>
             </div>
 
@@ -262,7 +258,7 @@
                         <div class="form-group"><label>Descrizione</label><input type="text" id="adm-com-desc"></div>
                         <div class="form-group"><label>Link (Opzionale)</label><input type="url" id="adm-com-link"></div>
                         <div class="form-group"><label>Firma</label><input type="text" id="adm-com-firma"></div>
-                        <button onclick="addDinamico('comunicazioni')">Pubblica Avviso</button>
+                        <button onclick="window.addDinamico('comunicazioni')">Pubblica Avviso</button>
                         <div class="scroll-container" style="max-height: 150px; margin-top:15px;" id="adm-com-list"></div>
                     </div>
 
@@ -272,7 +268,7 @@
                         <div class="form-group"><label>Descrizione Breve</label><input type="text" id="adm-doc-desc"></div>
                         <div class="form-group"><label>URL</label><input type="url" id="adm-doc-link"></div>
                         <div class="form-group"><label>Firma</label><input type="text" id="adm-doc-firma"></div>
-                        <button onclick="addDinamico('documenti')">Aggiungi Link</button>
+                        <button onclick="window.addDinamico('documenti')">Aggiungi Link</button>
                         <div class="scroll-container" style="max-height: 150px; margin-top:15px;" id="adm-doc-list"></div>
                     </div>
                 </div>
@@ -282,7 +278,7 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: flex-end;">
                         <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="admin-vamp-nome"></div>
                         <div class="form-group" style="margin:0"><label>Grado</label><input type="text" id="admin-vamp-grado"></div>
-                        <button onclick="aggiungiVampiro()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
+                        <button onclick="window.aggiungiVampiro()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
                     </div>
                     <div class="scroll-container" style="max-height: 200px; margin-top: 20px;">
                         <table style="font-size: 0.7rem;">
@@ -316,16 +312,16 @@
                     <div style="display: flex; gap: 15px; align-items: flex-end;">
                         <div class="form-group" style="flex:1; margin:0">
                             <label>Correzione Manuale Saldo (cr)</label>
-                            <input type="number" id="admin-saldo-val" onkeydown="if(event.key==='Enter') adminUpdateSaldo()">
+                            <input type="number" id="admin-saldo-val" onkeydown="if(event.key==='Enter') window.adminUpdateSaldo()">
                         </div>
-                        <button onclick="adminUpdateSaldo()" style="width: auto; padding: 14px 25px;">Aggiorna</button>
+                        <button onclick="window.adminUpdateSaldo()" style="width: auto; padding: 14px 25px;">Aggiorna</button>
                     </div>
                 </div>
 
                 <div class="vamp-card">
                     <h2>Gestione Inventario</h2>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: flex-end; margin-bottom: 30px;">
-                        <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="admin-item-name" onkeydown="if(event.key==='Enter') adminUpdateItem()"></div>
+                        <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="admin-item-name" onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
                         <div class="form-group" style="margin:0">
                             <label>Settore</label>
                             <select id="admin-item-cat">
@@ -334,11 +330,11 @@
                                 <option value="Inventario 3">Deposito 3</option>
                             </select>
                         </div>
-                        <div class="form-group" style="margin:0"><label>Q.tà</label><input type="number" id="admin-item-qty" value="0" onkeydown="if(event.key==='Enter') adminUpdateItem()"></div>
-                        <button onclick="adminUpdateItem()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
+                        <div class="form-group" style="margin:0"><label>Q.tà</label><input type="number" id="admin-item-qty" value="0" onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
+                        <button onclick="window.adminUpdateItem()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
                     </div>
                     <div class="search-box">
-                        <input type="text" id="search-admin-inv" placeholder="Cerca..." onkeyup="renderAdminTable()">
+                        <input type="text" id="search-admin-inv" placeholder="Cerca..." onkeyup="window.renderAdminTable()">
                     </div>
                     <div class="scroll-container">
                         <table>
@@ -350,28 +346,27 @@
 
                 <div class="vamp-card">
                     <h2>Log Inventario</h2>
-                    <div class="search-box"><input type="text" id="search-admin-logs" placeholder="Cerca..." onkeyup="renderAdminLogs()"></div>
+                    <div class="search-box"><input type="text" id="search-admin-logs" placeholder="Cerca..." onkeyup="window.renderAdminLogs()"></div>
                     <div class="scroll-container"><div id="admin-logs-box"></div></div>
                 </div>
 
                 <div class="vamp-card">
                     <h2>Log Saldo</h2>
-                    <div class="search-box"><input type="text" id="search-admin-saldo-logs" placeholder="Cerca..." onkeyup="renderAdminSaldoLogs()"></div>
+                    <div class="search-box"><input type="text" id="search-admin-saldo-logs" placeholder="Cerca..." onkeyup="window.renderAdminSaldoLogs()"></div>
                     <div class="scroll-container"><div id="admin-saldo-logs-box"></div></div>
                 </div>
 
                 <div class="vamp-card">
                     <h2>Archivio Storico Vendite</h2>
-                    <div class="search-box"><input type="text" id="search-admin-archivio" placeholder="Filtra..." onkeyup="renderArchivioGestione()"></div>
+                    <div class="search-box"><input type="text" id="search-admin-archivio" placeholder="Filtra..." onkeyup="window.renderArchivioGestione()"></div>
                     <div class="scroll-container" id="admin-archivio-container"></div>
                 </div>
                 
-                <button onclick="logoutAdmin()" style="background: transparent; border: 1px solid #444; margin: 20px auto; display: block; width: auto; color: #555;">Chiudi Sessione</button>
+                <button onclick="window.logoutAdmin()" style="background: transparent; border: 1px solid #444; margin: 20px auto; display: block; width: auto; color: #555;">Chiudi Sessione</button>
             </div>
         </section>
     </div>
 
     <footer>Horde RP - Gestionale Vampiri &copy; 2026 • Vitrio</footer>
-    <script type="module" src="script.js"></script>
 </body>
 </html>
