@@ -463,6 +463,7 @@ function aggiornaStats() {
     const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
     const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + curr.dinastia, 0);
     const totaleQtySett = correnti.reduce((acc, curr) => acc + curr.qty, 0);
+    const ekatonStorico = vendite.reduce((acc, curr) => acc + curr.dinastia, 0) * 0.5;
     
     if(document.getElementById('tot-dinastia-sett')) document.getElementById('tot-dinastia-sett').innerText = fmt(totaleDinastiaSettimana) + " cr";
     if(document.getElementById('tot-ekaton-sett')) document.getElementById('tot-ekaton-sett').innerText = fmt(Math.floor(totaleDinastiaSettimana * 0.5)) + " cr";
@@ -470,7 +471,9 @@ function aggiornaStats() {
 
     if(document.getElementById('admin-tot-qty-storico')) document.getElementById('admin-tot-qty-storico').innerText = fmt(vendite.reduce((acc, curr) => acc + curr.qty, 0)) + "x";
     if(document.getElementById('admin-tot-dinastia-storico')) document.getElementById('admin-tot-dinastia-storico').innerText = fmt(vendite.reduce((acc, curr) => acc + curr.dinastia, 0)) + " cr";
+    if(document.getElementById('admin-tot-ekaton-storico')) document.getElementById('admin-tot-ekaton-storico').innerText = fmt(Math.floor(ekatonStorico)) + " cr";
 }
+
 
 // --- INITIALIZATION ---
 onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
