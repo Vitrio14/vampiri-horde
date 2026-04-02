@@ -84,7 +84,7 @@ nav {
     border-radius: 50%; 
     border: 1px solid var(--gold-accent); 
     filter: drop-shadow(0 0 5px var(--blood-red));
-    object-fit: cover; /* Evita schiacciamento logo */
+    object-fit: cover;
 }
 
 .nav-links { display: flex; gap: 25px; }
@@ -163,8 +163,8 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 /* --- LAYOUT INVENTARIO --- */
 .inv-layout-3col {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); /* Aumentata base colonna */
+    gap: 25px;
     margin-top: 20px;
 }
 
@@ -172,43 +172,45 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     background: rgba(22, 22, 22, 0.6);
     border: 1px solid #333;
     border-radius: 14px;
-    padding: 15px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
 }
 
 .inv-column h3 {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--gold-accent);
     border-bottom: 1px solid var(--blood-red);
-    padding-bottom: 8px;
-    margin-bottom: 15px;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
     text-align: center;
     text-transform: uppercase;
 }
 
 .inv-grid-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
-    gap: 10px;
-    padding: 5px;
-    max-height: 220px; 
+    grid-template-columns: repeat(auto-fill, 110px); /* Dimensione fissa box */
+    justify-content: center;
+    gap: 15px;
+    padding: 10px;
+    max-height: 280px; 
     overflow-y: auto;
 }
 
 .inv-box {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--glass-border);
-    border-radius: 10px;
-    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    width: 110px;  /* Larghezza fissa */
+    height: 110px; /* Altezza fissa */
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 10px 5px;
+    justify-content: space-between;
+    padding: 12px 8px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
 }
@@ -221,38 +223,37 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 }
 
 .inv-img {
-    width: 40px;
-    height: 40px;
-    /* FIX: Cambiato object-fit e rimosso vincoli che causano distorsione */
-    object-fit: contain; 
-    flex-shrink: 0; /* Impedisce che l'immagine venga schiacciata dal testo */
+    width: 50px;
+    height: 50px;
+    object-fit: contain; /* Risolve schiacciamento Chrome */
+    flex-shrink: 0;
     filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));
-    margin-bottom: 5px;
 }
 
 .inv-name {
-    font-size: 0.55rem;
+    font-size: 0.58rem;
     text-transform: uppercase;
     color: var(--text-light);
     font-weight: 700;
     letter-spacing: 0.5px;
     line-height: 1.1;
     word-break: break-word;
-    /* FIX: Assicura che il testo non spinga l'immagine */
-    max-width: 100%;
+    width: 100%;
+    margin-top: 5px;
 }
 
 .inv-qty-badge {
     position: absolute;
-    top: 5px;
-    right: 5px;
+    top: 6px;
+    right: 6px;
     background: var(--gold-accent);
     color: #000;
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     font-weight: 800;
-    padding: 1px 5px;
+    padding: 1px 6px;
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 2;
 }
 
 table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.8rem; }
