@@ -884,24 +884,54 @@
             if(res.isConfirmed) await deleteDoc(doc(db, "membri", id));
         };
 
-        function renderVampiriLists() {
+function renderVampiriLists() {
+            // 1. Definiamo l'ordine gerarchico (tutto minuscolo per evitare errori)
+            const ordineGradi = {
+                'originaria': 1,
+                'anziano': 2,
+                'vampiro': 3,
+                'neonato': 4
+            };
+
+            // 2. Ordiniamo l'array prima di creare l'HTML
+            listaVampiri.sort((a, b) => {
+                const gradoA = (a.grado || "").toLowerCase().trim();
+                const gradoB = (b.grado || "").toLowerCase().trim();
+                
+                const pesoA = ordineGradi[gradoA] || 99;
+                const pesoB = ordineGradi[gradoB] || 99;
+                
+                return pesoA - pesoB;
+            });
+
+            // 3. Aggiorniamo la lista nel DIV che mi hai mostrato
+            const listaDinamica = document.getElementById('lista-membri-dinamica');
+            if (listaDinamica) {
+                listaDinamica.innerHTML = listaVampiri
+                    .map(v => `<p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px;"><strong>${v.nome}:</strong> ${v.grado}</p>`)
+                    .join('');
+            }
+
+            // 4. Aggiorniamo i menu a tendina (select)
             const selects = document.querySelectorAll('.vampiro-select-list');
             const options = `<option value="">-- Seleziona Vampiro --</option>` + 
                 listaVampiri.map(v => `<option value="${v.nome}">${v.nome}</option>`).join('');
+            
             selects.forEach(s => {
                 const currentVal = s.value;
                 s.innerHTML = options;
                 s.value = currentVal;
             });
 
-            document.getElementById('lista-membri-dinamica').innerHTML = listaVampiri
-                .map(v => `<p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px;"><strong>${v.nome}:</strong> ${v.grado}</p>`)
-                .join('');
-
+            // 5. Aggiorniamo la tabella amministrativa
             const tbody = document.getElementById('admin-vampiri-body');
             if(tbody) {
                 tbody.innerHTML = listaVampiri.map(v => `
-                    <tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>
+                    <tr>
+                        <td>${v.nome}</td>
+                        <td>${v.grado}</td>
+                        <td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td>
+                    </tr>
                 `).join('');
             }
         }
