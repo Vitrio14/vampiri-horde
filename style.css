@@ -61,7 +61,7 @@ h1, h2, h3, .nav-link { font-family: 'Cinzel', serif; letter-spacing: 1.5px; }
 }
 
 /* Scroll Boxes Dinamici */
-#lista-membri-dinamica, #comunicazioni-box, #documenti-box, #top-settimana-box, #top-sempre-box {
+#lista-membri-dinamica, #comunicazioni-box, #documenti-box, #top-settimana-box, #top-sempre-box, #morsi-vamp-sett-box, #morsi-vamp-tot-box, #morsi-umani-sett-box, #morsi-umani-tot-box {
     max-height: 200px; overflow-y: auto; padding-right: 10px;
 }
 
@@ -121,6 +121,52 @@ nav {
 .stat-card:hover { transform: translateY(-5px); border-color: rgba(197, 160, 89, 0.4); }
 .stat-card h3 { font-size: 0.55rem; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
 .stat-card p { font-size: 1.2rem; font-weight: 700; color: #fff; font-family: 'Cinzel', serif; }
+
+/* --- SPECIFICO SEZIONE MORSI --- */
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+.status-attivo { 
+    background: var(--success-green); 
+    color: #000; 
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4); 
+}
+.status-passato { 
+    background: #333; 
+    color: #888; 
+    border: 1px solid #444;
+}
+
+.morsi-grid-classifiche {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.morsi-col {
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+}
+
+.morsi-col h4 {
+    font-size: 0.65rem;
+    color: var(--gold-accent);
+    text-align: center;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(139, 0, 0, 0.3);
+    padding-bottom: 8px;
+}
+/* --- FINE MORSI --- */
 
 /* Inputs & Forms */
 .search-box { margin-bottom: 15px; position: relative; }
@@ -205,10 +251,10 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     height: 110px;
     display: flex;
     align-items: center;
-    justify-content: center; /* Centra l'unico elemento fluttuante (l'immagine) */
+    justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    position: relative; /* Necessario per il testo e badge assoluti */
+    position: relative;
     overflow: hidden;
 }
 
@@ -220,7 +266,7 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 }
 
 .inv-img {
-    width: 60px; /* Dimensione controllata */
+    width: 60px;
     height: 60px;
     object-fit: contain;
     flex-shrink: 0;

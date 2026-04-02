@@ -19,6 +19,7 @@ let vendite = [];
 let inventarioDati = [];
 let logs = [];
 let saldoLogs = [];
+let morsi = []; // Nuova variabile
 let saldoGlobale = 0;
 let listaVampiri = [];
 let comunicazioni = [];
@@ -177,7 +178,91 @@ function renderVampiriLists() {
     if(tbody) tbody.innerHTML = listaVampiri.map(v => `<tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>`).join('');
 }
 
-// --- CLASSIFICHE ---
+// --- LOGICA MORSI (NUOVA) ---
+window.registraMorso = async () => {
+    const vampiro = document.getElementById('morso-vamp-select').value;
+    const umano = document.getElementById('morso-umano-nome').value.trim();
+    
+    if(!vampiro || !umano) return vampireToast("Seleziona un vampiro e scrivi il nome dell'umano.", "error");
+
+    const now = new Date();
+    await addDoc(collection(db, "morsi"), {
+        vampiro,
+        umano,
+        timestamp: Date.now(),
+        dataStr: now.toLocaleDateString('it-IT'),
+        ora: now.toLocaleTimeString('it-IT'),
+        settimanaEtichetta: getWeekYearKey(now)
+    });
+
+    vampireToast("Morso registrato negli annali.", "success");
+    document.getElementById('morso-umano-nome').value = "";
+};
+
+window.renderMorsi = () => {
+    const tbody = document.getElementById('lista-morsi-correnti');
+    if(!tbody) return;
+
+    const currentWeek = getWeekYearKey(new Date());
+    const morsiSettimana = morsi.filter(m => m.settimanaEtichetta === currentWeek);
+
+    // Render Tabella Recenti (24h logic)
+    tbody.innerHTML = morsiSettimana.sort((a,b) => b.timestamp - a.timestamp).map(m => {
+        const oraAttuale = Date.now();
+        const diffOre = (oraAttuale - m.timestamp) / (1000 * 60 * 60);
+        const statusClass = diffOre < 24 ? 'status-attivo' : 'status-passato';
+        const statusText = diffOre < 24 ? 'Attivo' : 'Passato';
+
+        return `
+            <tr>
+                <td><span class="ts-label">${m.dataStr}</span><strong>${m.ora}</strong></td>
+                <td>${m.vampiro}</td>
+                <td>${m.umano}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            </tr>`;
+    }).join('');
+
+    // Classifiche Morsi
+    renderClassificaMorsi(morsiSettimana, 'vampiro', 'morsi-vamp-sett-box');
+    renderClassificaMorsi(morsi, 'vampiro', 'morsi-vamp-tot-box');
+    renderClassificaMorsi(morsiSettimana, 'umano', 'morsi-umani-sett-box');
+    renderClassificaMorsi(morsi, 'umano', 'morsi-umani-tot-box');
+
+    // Archivio Morsi
+    const containerArchivio = document.getElementById('archivio-morsi-container');
+    if(containerArchivio) {
+        const gruppi = {};
+        morsi.forEach(m => { if(!gruppi[m.settimanaEtichetta]) gruppi[m.settimanaEtichetta] = []; gruppi[m.settimanaEtichetta].push(m); });
+        
+        containerArchivio.innerHTML = Object.keys(gruppi).sort().reverse().map(key => `
+            <div class="week-archive-block">
+                <div class="week-title">${getWeekRangeLabel(key)} | Totale Morsi: ${gruppi[key].length}</div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Umano</th></tr></thead>
+                        <tbody>${gruppi[key].sort((a,b) => b.timestamp - a.timestamp).map(m => `<tr><td>${m.dataStr} ${m.ora}</td><td>${m.vampiro}</td><td>${m.umano}</td></tr>`).join('')}</tbody>
+                    </table>
+                </div>
+            </div>`).join('');
+    }
+};
+
+function renderClassificaMorsi(data, chiave, containerId) {
+    const container = document.getElementById(containerId);
+    if(!container) return;
+    const conteggio = {};
+    data.forEach(m => { const val = m[chiave]; conteggio[val] = (conteggio[val] || 0) + 1; });
+    const rank = Object.entries(conteggio).sort((a,b) => b[1] - a[1]);
+    
+    container.innerHTML = rank.length === 0 ? "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>" : 
+    rank.map((item, index) => `
+        <div class="rank-item ${index === 0 ? 'rank-top1' : index === 1 ? 'rank-top2' : index === 2 ? 'rank-top3' : ''}">
+            <span>${index + 1}. ${item[0]}</span>
+            <strong>${item[1]} morsi</strong>
+        </div>`).join('');
+}
+
+// --- CLASSIFICHE VENDITE ---
 function renderClassifiche() {
     const currentWeek = getWeekYearKey(new Date());
     const mapSett = {};
@@ -355,8 +440,7 @@ window.renderInventario = () => {
                         <img class="inv-img" src="${i.foto || 'https://via.placeholder.com/100/121212/8b0000?text=?'}" 
                              onerror="this.src='https://via.placeholder.com/100/121212/8b0000?text=?'">
                         <span class="inv-name">${i.id}</span>
-                    </div>
-                `).join('');
+                    </div>`).join('');
         }
     });
 };
@@ -558,9 +642,7 @@ window.logoutAdmin = async () => {
     
     if(res.isConfirmed) {
         vampireToast("Sessione chiusa correttamente.", "info");
-        setTimeout(() => {
-            location.reload();
-        }, 800);
+        setTimeout(() => { location.reload(); }, 800);
     }
 };
 
@@ -569,6 +651,7 @@ window.popolaSelectOggetti = () => {
     if(select) select.innerHTML = inventarioDati.sort((a,b) => a.id.localeCompare(b.id)).map(i => `<option value="${i.id}">${i.id}</option>`).join('');
 };
 
+// --- TIME UTILS ---
 function getWeekYearKey(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -604,11 +687,11 @@ function aggiornaStats() {
     if(document.getElementById('admin-tot-count-storico')) document.getElementById('admin-tot-count-storico').innerText = vendite.length;
 }
 
-
-// --- INITIALIZATION ---
+// --- INITIALIZATION & SNAPSHOTS ---
 onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
 onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
 onSnapshot(query(collection(db, "documenti"), orderBy("timestamp", "desc")), (snap) => { documenti = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
+
 onSnapshot(collection(db, "vendite"), (snapshot) => { 
     vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
     window.renderVendite(); 
@@ -617,14 +700,22 @@ onSnapshot(collection(db, "vendite"), (snapshot) => {
     popolaFiltroSettimane();
     if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
 });
+
 onSnapshot(collection(db, "inventario"), (snapshot) => { 
     inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
     window.renderInventario(); 
     window.popolaSelectOggetti(); 
     if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
 });
+
+onSnapshot(collection(db, "morsi"), (snapshot) => { 
+    morsi = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+    window.renderMorsi(); 
+});
+
 onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
 onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderSaldoLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminSaldoLogs(); });
+
 onSnapshot(doc(db, "config", "saldo"), (docSnap) => { 
     if(docSnap.exists()) { saldoGlobale = docSnap.data().valore; } 
     else { saldoGlobale = 0; setDoc(doc(db, "config", "saldo"), { valore: 0 }); }

@@ -35,6 +35,7 @@
             <div class="nav-link" onclick="window.showSection('saldo')">Saldo</div>
             <div class="nav-link" onclick="window.showSection('calcolo')">Calcolo</div>
             <div class="nav-link" onclick="window.showSection('inventario')">Inventario</div>
+            <div class="nav-link" onclick="window.showSection('morsi')">Morsi</div>
             <div class="nav-link" onclick="window.showSection('gestione')">Gestione</div>
             <a href="https://postimages.org" target="_blank" class="nav-link">Foto</a>
             <a href="https://docs.google.com/document/d/1L3r3aqR_1Yce50MWRaQd5QEc9lyu1Qdr0IczYxeUiBY/edit?usp=sharing" target="_blank" class="nav-link">Manuale</a>
@@ -239,6 +240,63 @@
             <div class="scroll-container"><div id="inv-logs"></div></div>
         </section>
 
+        <section id="morsi" class="section">
+            <div class="vamp-card">
+                <h2 style="text-align: center;">🏆 Classifiche Morsi</h2>
+                <div class="morsi-grid-classifiche">
+                    <div class="morsi-col">
+                        <h4>Vampiri (Settimana)</h4>
+                        <div id="morsi-vamp-sett-box"></div>
+                    </div>
+                    <div class="morsi-col">
+                        <h4>Vampiri (Totale)</h4>
+                        <div id="morsi-vamp-tot-box"></div>
+                    </div>
+                    <div class="morsi-col">
+                        <h4>Umani Morsi (Settimana)</h4>
+                        <div id="morsi-umani-sett-box"></div>
+                    </div>
+                    <div class="morsi-col">
+                        <h4>Umani Morsi (Totale)</h4>
+                        <div id="morsi-umani-tot-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vamp-card">
+                <h2>Registra Nuovo Morso</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Vampiro</label>
+                        <select id="morso-vamp-select" class="vampiro-select-list"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Umano Morso</label>
+                        <input type="text" id="morso-umano-nome" placeholder="Nome Cognome...">
+                    </div>
+                </div>
+                <button onclick="window.registraMorso()">Registra Morso</button>
+            </div>
+
+            <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Morsi Recenti (Ultime 24h)</h2>
+            <div class="scroll-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data/Ora</th>
+                            <th>Vampiro</th>
+                            <th>Umano</th>
+                            <th>Stato</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-morsi-correnti"></tbody>
+                </table>
+            </div>
+
+            <h2 style="font-size: 0.8rem; margin-top: 40px; margin-bottom: 15px;">Archivio Storico Morsi</h2>
+            <div id="archivio-morsi-container" class="scroll-container"></div>
+        </section>
+
         <section id="gestione" class="section">
             <div id="login-container-gestione">
                 <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
@@ -286,7 +344,7 @@
                         <button onclick="window.aggiungiVampiro()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
                     </div>
                     <div class="scroll-container" style="max-height: 200px; margin-top: 20px;">
-                        <table>
+                        <table style="font-size: 0.7rem;">
                             <thead><tr><th>Nome</th><th>Grado</th><th>Azione</th></tr></thead>
                             <tbody id="admin-vampiri-body"></tbody>
                         </table>
