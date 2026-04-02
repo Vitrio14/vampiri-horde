@@ -160,10 +160,10 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     border: 1px solid var(--glass-border); padding: 15px; border-radius: 14px; margin-top: 15px;
 }
 
-/* --- LAYOUT INVENTARIO --- */
+/* --- LAYOUT INVENTARIO (PERFETTAMENTE CENTRATO) --- */
 .inv-layout-3col {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); /* Aumentata base colonna */
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     gap: 25px;
     margin-top: 20px;
 }
@@ -189,7 +189,7 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 
 .inv-grid-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 110px); /* Dimensione fissa box */
+    grid-template-columns: repeat(auto-fill, 110px);
     justify-content: center;
     gap: 15px;
     padding: 10px;
@@ -198,20 +198,17 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 }
 
 .inv-box {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    width: 110px;  /* Larghezza fissa */
-    height: 110px; /* Altezza fissa */
+    width: 110px;
+    height: 110px;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 8px;
-    text-align: center;
+    justify-content: center; /* Centra l'unico elemento fluttuante (l'immagine) */
     cursor: pointer;
     transition: all 0.3s ease;
-    position: relative;
+    position: relative; /* Necessario per il testo e badge assoluti */
     overflow: hidden;
 }
 
@@ -223,23 +220,33 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 }
 
 .inv-img {
-    width: 50px;
-    height: 50px;
-    object-fit: contain; /* Risolve schiacciamento Chrome */
+    width: 60px; /* Dimensione controllata */
+    height: 60px;
+    object-fit: contain;
     flex-shrink: 0;
-    filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));
+    filter: drop-shadow(0 0 10px rgba(0,0,0,0.8));
+    transition: transform 0.3s ease;
+}
+
+.inv-box:hover .inv-img {
+    transform: scale(1.1);
 }
 
 .inv-name {
-    font-size: 0.58rem;
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    width: 100%;
+    font-size: 0.55rem;
     text-transform: uppercase;
     color: var(--text-light);
     font-weight: 700;
     letter-spacing: 0.5px;
-    line-height: 1.1;
-    word-break: break-word;
-    width: 100%;
-    margin-top: 5px;
+    line-height: 1;
+    text-align: center;
+    padding: 0 5px;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
 .inv-qty-badge {
@@ -250,10 +257,11 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     color: #000;
     font-size: 0.6rem;
     font-weight: 800;
-    padding: 1px 6px;
+    padding: 2px 6px;
     border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     z-index: 2;
+    pointer-events: none;
 }
 
 table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.8rem; }
