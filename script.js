@@ -48,7 +48,7 @@ const vampireToast = (msg, icon = 'info') => {
     });
     Toast.fire({ icon: icon, title: msg });
 };
-window.vampireToast = vampireToast; // <--- FONDAMENTALE PER FARLA FUNZIONARE
+window.vampireToast = vampireToast;
 
 // --- LOGICA SITO (LOGIN GLOBALE) ---
 window.unlockSite = () => {
@@ -60,7 +60,7 @@ window.unlockSite = () => {
 
     if(passInput === PASSWORD_GLOBAL) {
         document.getElementById('global-lock').style.display = 'none';
-        showSection('generale'); 
+        window.showSection('generale'); 
         vampireToast("Accesso alla Dinastia consentito.", "success");
     } else {
         vampireToast("Codice errato. Il sigillo resta intatto.", "error");
@@ -78,7 +78,8 @@ window.unlockSite = () => {
 window.showSection = (id) => {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const target = document.getElementById(id);
+    if(target) target.classList.add('active');
     const link = Array.from(document.querySelectorAll('.nav-link')).find(l => l.getAttribute('onclick')?.includes(id));
     if(link) link.classList.add('active');
     window.scrollTo(0, 0); 
@@ -338,20 +339,31 @@ window.renderVendite = () => {
         </tr>`).join('');
 };
 
-// --- LOGICA INVENTARIO ---
+// --- LOGICA INVENTARIO VISIVO ---
 window.renderInventario = () => {
     const searchTerm = document.getElementById('search-inventario').value.toLowerCase();
     [1, 2, 3].forEach(n => {
         const container = document.getElementById(`display-inv-${n}`);
-        if(container) container.innerHTML = inventarioDati.filter(i => i.categoria === `Inventario ${n}` && i.id.toLowerCase().includes(searchTerm))
-            .sort((a,b) => a.id.localeCompare(b.id))
-            .map(i => `<div class="inv-item" onclick="openInvQuickAction('${i.id}')"><span>${i.id}</span><span class="inv-qty">${fmt(i.qty)}</span></div>`).join('');
+        if(container) {
+            container.className = "inv-grid-container"; 
+            container.innerHTML = inventarioDati
+                .filter(i => i.id && i.categoria === `Inventario ${n}` && i.id.toLowerCase().includes(searchTerm))
+                .sort((a,b) => a.id.localeCompare(b.id))
+                .map(i => `
+                    <div class="inv-box" onclick="window.openInvQuickAction('${i.id}')">
+                        <span class="inv-qty-badge">${fmt(i.qty)}</span>
+                        <img class="inv-img" src="${i.foto || 'https://via.placeholder.com/100/121212/8b0000?text=?'}" 
+                             onerror="this.src='https://via.placeholder.com/100/121212/8b0000?text=?'">
+                        <span class="inv-name">${i.id}</span>
+                    </div>
+                `).join('');
+        }
     });
 };
 
 window.openInvQuickAction = async (itemID) => {
     const utente = document.getElementById('inv-user-name').value;
-    if(!utente) return vampireToast("Identificati nel campo 'Tuo Nome'.", "error");
+    if(!utente) return vampireToast("Identificati prima di operare!", "error");
     const item = inventarioDati.find(i => i.id === itemID);
     const { value: formValues } = await Swal.fire({
         title: itemID,
@@ -417,12 +429,19 @@ window.adminUpdateSaldo = async () => {
 };
 
 window.adminUpdateItem = async () => {
-    const n = document.getElementById('admin-item-name').value;
+    const n = document.getElementById('admin-item-name').value.trim();
     const c = document.getElementById('admin-item-cat').value;
+    const f = document.getElementById('admin-item-foto').value.trim();
     const q = parseInt(document.getElementById('admin-item-qty').value) || 0;
-    if(n) await setDoc(doc(db, "inventario", n), { qty: q, categoria: c });
-    document.getElementById('admin-item-name').value = ""; 
-    vampireToast("Elemento inventario aggiornato/creato.", "success");
+    
+    if(n) {
+        await setDoc(doc(db, "inventario", n), { qty: q, categoria: c, foto: f });
+        document.getElementById('admin-item-name').value = "";
+        document.getElementById('admin-item-foto').value = "";
+        vampireToast("Elemento inventario aggiornato.", "success");
+    } else {
+        vampireToast("Nome obbligatorio.", "error");
+    }
 };
 
 window.adminUpdateQty = async (item, val) => {
@@ -466,8 +485,8 @@ window.renderAdminTable = () => {
     const tbody = document.getElementById('admin-table-body');
     if(!tbody) return;
     const searchTerm = document.getElementById('search-admin-inv').value.toLowerCase();
-    tbody.innerHTML = inventarioDati.filter(i => i.id.toLowerCase().includes(searchTerm)).sort((a,b) => a.id.localeCompare(b.id))
-        .map(i => `<tr><td>${i.id}</td><td>${i.categoria}</td><td><input type="number" value="${i.qty}" onchange="adminUpdateQty('${i.id}', this.value)"></td><td><button class="btn-delete" onclick="adminDeleteItem('${i.id}')">ELIMINA</button></td></tr>`).join('');
+    tbody.innerHTML = inventarioDati.filter(i => i.id && i.id.toLowerCase().includes(searchTerm)).sort((a,b) => a.id.localeCompare(b.id))
+        .map(i => `<tr><td>${i.id}</td><td>${i.categoria}</td><td><input type="number" value="${i.qty}" onchange="window.adminUpdateQty('${i.id}', this.value)"></td><td><button class="btn-delete" onclick="window.adminDeleteItem('${i.id}')">ELIMINA</button></td></tr>`).join('');
 };
 
 window.renderAdminLogs = () => {
@@ -481,7 +500,7 @@ window.renderAdminLogs = () => {
                 <span><strong>${l.utente}</strong> <span>${l.tipo}</span> ${fmt(l.qty)}x ${l.item}</span>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
-                    <button class="btn-delete" onclick="adminDeleteLog('${l.id}')">ELIMINA</button>
+                    <button class="btn-delete" onclick="window.adminDeleteLog('${l.id}')">ELIMINA</button>
                 </div>
             </div>
             <div class="log-causale">${l.motivo || ''}</div>
@@ -499,7 +518,7 @@ window.renderAdminSaldoLogs = () => {
                 <span><strong>${l.utente}</strong> <span>${l.tipo}</span> ${fmt(l.qty)} cr</span>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
-                    <button class="btn-delete" onclick="adminDeleteSaldoLog('${l.id}')">X</button>
+                    <button class="btn-delete" onclick="window.adminDeleteSaldoLog('${l.id}')">X</button>
                 </div>
             </div>
             <div class="log-causale">${l.motivo}</div>
@@ -522,7 +541,7 @@ window.renderArchivioGestione = () => {
         return `<div class="week-archive-block">
             <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr | Ekaton (50%): ${fmt(Math.floor(weekTotalDinastia * 0.5))} cr</div>
             <div style="overflow-x:auto;"><table><thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Qty</th><th>Propria</th><th>Dinastia</th><th>Note</th><th>Azione</th></tr></thead>
-            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr}<br>${v.ora}</td><td>${v.nome}</td><td>${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
+            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr}<br>${v.ora}</td><td>${v.nome}</td><td>${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
     }).join('');
 };
 
@@ -598,7 +617,12 @@ onSnapshot(collection(db, "vendite"), (snapshot) => {
     popolaFiltroSettimane();
     if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
 });
-onSnapshot(collection(db, "inventario"), (snapshot) => { inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderInventario(); window.popolaSelectOggetti(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); });
+onSnapshot(collection(db, "inventario"), (snapshot) => { 
+    inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+    window.renderInventario(); 
+    window.popolaSelectOggetti(); 
+    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
+});
 onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
 onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderSaldoLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminSaldoLogs(); });
 onSnapshot(doc(db, "config", "saldo"), (docSnap) => { 

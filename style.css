@@ -153,11 +153,97 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     border: 1px solid var(--glass-border); padding: 15px; border-radius: 14px; margin-top: 15px;
 }
 
+/* --- LAYOUT INVENTARIO --- */
 .inv-layout-3col {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
 }
-.inv-column { background: rgba(22, 22, 22, 0.6); border: 1px solid #333; border-radius: 14px; padding: 20px; }
-.inv-column h3 { font-size: 0.8rem; color: var(--gold-accent); border-bottom: 1px solid var(--blood-red); padding-bottom: 10px; margin-bottom: 15px; text-align: center; }
+
+.inv-column {
+    background: rgba(22, 22, 22, 0.6);
+    border: 1px solid #333;
+    border-radius: 14px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.inv-column h3 {
+    font-size: 0.75rem;
+    color: var(--gold-accent);
+    border-bottom: 1px solid var(--blood-red);
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+/* Container griglia con SCROLL AUTOMATICO dopo ~2 righe (circa 6-8 item) */
+.inv-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 10px;
+    padding: 5px;
+    max-height: 220px; /* Altezza fissa per innescare lo scroll */
+    overflow-y: auto;
+}
+
+.inv-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.inv-box:hover {
+    border-color: var(--gold-accent);
+    background: rgba(139, 0, 0, 0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+}
+
+.inv-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));
+    margin-bottom: 5px;
+}
+
+.inv-name {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    color: var(--text-light);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+    word-break: break-word;
+}
+
+.inv-qty-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--gold-accent);
+    color: #000;
+    font-size: 0.55rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
 
 table { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 0.8rem; }
 thead th { 
@@ -172,12 +258,6 @@ td:last-child { border-radius: 0 10px 10px 0; }
 /* Utils */
 .photo-link { color: #5dade2; text-decoration: none; border-bottom: 1px dashed; font-weight: 600; display: inline-block; width: 100%; text-align: center; }
 .ts-label { font-size: 0.65rem; color: #777; display: block; }
-.inv-item {
-    background: rgba(255,255,255,0.02); padding: 12px 15px; border-radius: 10px; margin-bottom: 8px;
-    display: flex; justify-content: space-between; align-items: center; border-left: 2px solid transparent; transition: 0.3s; cursor: pointer;
-}
-.inv-item:hover { background: rgba(197, 160, 89, 0.05); border-left-color: var(--gold-accent); transform: scale(1.02); }
-.inv-qty { font-size: 1rem; font-weight: bold; color: var(--gold-accent); font-family: 'Cinzel', serif; }
 
 .log-entry { padding: 15px; border-radius: 12px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); margin-bottom: 10px; }
 .log-main { display: flex; justify-content: space-between; align-items: center; }
@@ -211,23 +291,22 @@ td:last-child { border-radius: 0 10px 10px 0; }
 .rank-top2 { border-left: 3px solid #c0c0c0; }
 .rank-top3 { border-left: 3px solid #cd7f32; }
 
-/* --- REGOLAZIONE NOTIFICHE A DESTRA PICCOLE E BASSE --- */
+/* --- NOTIFICHE SWEETALERT2 --- */
 .swal2-container.swal2-top-end {
-    top: 80px !important;    /* Cambia questo numero (es. 200px, 300px) per mandarle più giù */
-    right: 20px !important;   /* Distanza dal bordo destro */
-    width: auto !important;   /* Impedisce che diventi enorme */
+    top: 85px !important;
+    right: 20px !important; 
+    width: auto !important;
 }
 
 .swal2-popup.swal2-toast {
-    width: 250px !important;      /* Forza la larghezza piccola e fissa */
-    font-size: 0.75rem !important; /* Testo fine ed elegante */
-    padding: 10px !important;
+    width: 280px !important;
+    font-size: 0.75rem !important;
+    padding: 12px !important;
     background: #121212 !important;
-    border: 1px solid var(--gold-accent) !important; /* Bordo oro tipico del sito */
+    border: 1px solid var(--gold-accent) !important;
     box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
 }
 
-/* Rimpicciolisce l'icona per farla stare bene nel box piccolo */
 .swal2-toast .swal2-icon {
     min-width: 25px !important;
     height: 25px !important;

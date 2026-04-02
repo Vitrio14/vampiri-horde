@@ -17,7 +17,7 @@
 
     <div id="global-lock">
         <div class="vamp-card" style="max-width: 380px; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
-            <h2 style="border: none; text-align: center;">Verifica Richiesta</h2>
+            <h2 style="border: none; text-align: center;">Accesso membro</h2>
             <p style="font-size: 0.7rem; margin-bottom: 25px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Inserire il codice d'accesso</p>
             <input type="password" id="global-pass" style="text-align: center; letter-spacing: 10px; font-size: 1.2rem; margin-bottom: 20px;" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter') window.unlockSite()">
             <button onclick="window.unlockSite()">Entra</button>
@@ -228,9 +228,9 @@
                 <input type="text" id="search-inventario" placeholder="Cerca oggetto..." onkeyup="window.renderInventario()">
             </div>
             <div class="inv-layout-3col">
-                <div class="inv-column"><h3>Deposito 1</h3><div class="scroll-container" id="display-inv-1" style="max-height: 250px;"></div></div>
-                <div class="inv-column"><h3>Deposito 2</h3><div class="scroll-container" id="display-inv-2" style="max-height: 250px;"></div></div>
-                <div class="inv-column"><h3>Deposito 3</h3><div class="scroll-container" id="display-inv-3" style="max-height: 250px;"></div></div>
+                <div class="inv-column"><h3>Deposito 1</h3><div id="display-inv-1"></div></div>
+                <div class="inv-column"><h3>Deposito 2</h3><div id="display-inv-2"></div></div>
+                <div class="inv-column"><h3>Deposito 3</h3><div id="display-inv-3"></div></div>
             </div>
             <h2 style="font-size: 0.8rem; margin-top: 40px; margin-bottom: 15px;">Cronologia Movimenti</h2>
             <div class="search-box">
@@ -247,6 +247,11 @@
                         <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;" onkeydown="if(event.key==='Enter') window.checkAccess()" placeholder="••••">
                     </div>
                     <button onclick="window.checkAccess()">Entra</button>
+                    
+                    <p style="margin-top: 20px; font-size: 0.7rem; color: var(--gold-dim); cursor: pointer; text-transform: uppercase; letter-spacing: 1px;" 
+                       onclick="location.reload()">
+                       Torna al login membro
+                    </p>
                 </div>
             </div>
 
@@ -320,8 +325,8 @@
 
                 <div class="vamp-card">
                     <h2>Gestione Inventario</h2>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: flex-end; margin-bottom: 30px;">
-                        <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="admin-item-name" onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 15px; align-items: flex-end; margin-bottom: 30px;">
+                        <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="admin-item-name"></div>
                         <div class="form-group" style="margin:0">
                             <label>Settore</label>
                             <select id="admin-item-cat">
@@ -330,6 +335,7 @@
                                 <option value="Inventario 3">Deposito 3</option>
                             </select>
                         </div>
+                        <div class="form-group" style="margin:0"><label>URL Foto</label><input type="url" id="admin-item-foto" placeholder="https://..." onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
                         <div class="form-group" style="margin:0"><label>Q.tà</label><input type="number" id="admin-item-qty" value="0" onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
                         <button onclick="window.adminUpdateItem()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
                     </div>
