@@ -19,7 +19,7 @@ let vendite = [];
 let inventarioDati = [];
 let logs = [];
 let saldoLogs = [];
-let morsi = []; // Nuova variabile
+let morsi = []; 
 let saldoGlobale = 0;
 let listaVampiri = [];
 let comunicazioni = [];
@@ -35,7 +35,7 @@ const fmt = (n) => {
     return new Intl.NumberFormat('it-IT').format(n);
 };
 
-// --- FUNZIONE NOTIFICA (ESPORTATA IN WINDOW) ---
+// --- FUNZIONE NOTIFICA ---
 const vampireToast = (msg, icon = 'info') => {
     const Toast = Swal.mixin({
         toast: true, 
@@ -178,17 +178,19 @@ function renderVampiriLists() {
     if(tbody) tbody.innerHTML = listaVampiri.map(v => `<tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>`).join('');
 }
 
-// --- LOGICA MORSI (NUOVA) ---
+// --- LOGICA MORSI ---
 window.registraMorso = async () => {
-    const vampiro = document.getElementById('morso-vamp-select').value;
-    const umano = document.getElementById('morso-umano-nome').value.trim();
+    const predatore = document.getElementById('morso-vamp-select').value;
+    const tipoVittima = document.getElementById('morso-tipo-vittima').value;
+    const nomeVittima = document.getElementById('morso-umano-nome').value.trim();
     
-    if(!vampiro || !umano) return vampireToast("Seleziona un vampiro e scrivi il nome dell'umano.", "error");
+    if(!predatore || !nomeVittima) return vampireToast("Dati del morso incompleti.", "error");
 
     const now = new Date();
     await addDoc(collection(db, "morsi"), {
-        vampiro,
-        umano,
+        vampiro: predatore,
+        umano: nomeVittima,
+        tipoVittima: tipoVittima,
         timestamp: Date.now(),
         dataStr: now.toLocaleDateString('it-IT'),
         ora: now.toLocaleTimeString('it-IT'),
@@ -206,29 +208,60 @@ window.renderMorsi = () => {
     const currentWeek = getWeekYearKey(new Date());
     const morsiSettimana = morsi.filter(m => m.settimanaEtichetta === currentWeek);
 
-    // Render Tabella Recenti (24h logic)
+    // 1. Render Tabella Recenti
     tbody.innerHTML = morsiSettimana.sort((a,b) => b.timestamp - a.timestamp).map(m => {
-        const oraAttuale = Date.now();
-        const diffOre = (oraAttuale - m.timestamp) / (1000 * 60 * 60);
-        const statusClass = diffOre < 24 ? 'status-attivo' : 'status-passato';
-        const statusText = diffOre < 24 ? 'Attivo' : 'Passato';
+        const tVittima = m.tipoVittima || 'umano'; 
+        let statusHTML = "";
+        
+        if (tVittima === 'vampiro') {
+            statusHTML = '<span class="status-badge status-eterno">Eterno</span>';
+        } else {
+            const oraAttuale = Date.now();
+            const diffOre = (oraAttuale - m.timestamp) / (1000 * 60 * 60);
+            const statusClass = diffOre < 24 ? 'status-attivo' : 'status-passato';
+            const statusText = diffOre < 24 ? 'Attivo' : 'Passato';
+            statusHTML = `<span class="status-badge ${statusClass}">${statusText}</span>`;
+        }
+
+        const iconTipo = `<span class="type-badge type-${tVittima}">${tVittima}</span>`;
 
         return `
             <tr>
                 <td><span class="ts-label">${m.dataStr}</span><strong>${m.ora}</strong></td>
                 <td>${m.vampiro}</td>
-                <td>${m.umano}</td>
-                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>${iconTipo} ${m.umano}</td>
+                <td>${statusHTML}</td>
             </tr>`;
     }).join('');
 
-    // Classifiche Morsi
-    renderClassificaMorsi(morsiSettimana, 'vampiro', 'morsi-vamp-sett-box');
-    renderClassificaMorsi(morsi, 'vampiro', 'morsi-vamp-tot-box');
-    renderClassificaMorsi(morsiSettimana, 'umano', 'morsi-umani-sett-box');
-    renderClassificaMorsi(morsi, 'umano', 'morsi-umani-tot-box');
+    // --- LOGICA CLASSIFICHE SEPARATE ---
 
-    // Archivio Morsi
+    // 1. PREDATORI DI UMANI (Vampiri che mordono Umani)
+    const predUmaniSett = morsiSettimana.filter(m => (m.tipoVittima || 'umano') === 'umano');
+    const predUmaniTot = morsi.filter(m => (m.tipoVittima || 'umano') === 'umano');
+    renderClassificaMorsi(predUmaniSett, 'vampiro', 'morsi-vamp-sett-box');
+    renderClassificaMorsi(predUmaniTot, 'vampiro', 'morsi-vamp-tot-box');
+
+    // 2. PREDATORI DI VAMPIRI (Vampiri che mordono Vampiri)
+    const predVampiriSett = morsiSettimana.filter(m => m.tipoVittima === 'vampiro');
+    const predVampiriTot = morsi.filter(m => m.tipoVittima === 'vampiro');
+    renderClassificaMorsi(predVampiriSett, 'vampiro', 'morsi-vampiri-predatori-sett-box');
+    renderClassificaMorsi(predVampiriTot, 'vampiro', 'morsi-vampiri-predatori-tot-box');
+
+    // 3. VITTIME UMANE (Umani più morsi)
+    const vittimeUmaneSett = morsiSettimana.filter(m => (m.tipoVittima || 'umano') === 'umano');
+    const vittimeUmaneTot = morsi.filter(m => (m.tipoVittima || 'umano') === 'umano');
+    renderClassificaMorsi(vittimeUmaneSett, 'umano', 'morsi-umani-sett-box');
+    renderClassificaMorsi(vittimeUmaneTot, 'umano', 'morsi-umani-tot-box');
+
+    // 4. VITTIME VAMPIRI (Vampiri più morsi)
+    const vittimeVampSett = morsiSettimana.filter(m => m.tipoVittima === 'vampiro');
+    const vittimeVampTot = morsi.filter(m => m.tipoVittima === 'vampiro');
+    renderClassificaMorsi(vittimeVampSett, 'umano', 'morsi-vampiri-vittime-sett-box');
+    renderClassificaMorsi(vittimeVampTot, 'umano', 'morsi-vampiri-vittime-tot-box');
+
+    // --- FINE LOGICA CLASSIFICHE ---
+
     const containerArchivio = document.getElementById('archivio-morsi-container');
     if(containerArchivio) {
         const gruppi = {};
@@ -239,8 +272,8 @@ window.renderMorsi = () => {
                 <div class="week-title">${getWeekRangeLabel(key)} | Totale Morsi: ${gruppi[key].length}</div>
                 <div style="overflow-x:auto;">
                     <table>
-                        <thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Umano</th></tr></thead>
-                        <tbody>${gruppi[key].sort((a,b) => b.timestamp - a.timestamp).map(m => `<tr><td>${m.dataStr} ${m.ora}</td><td>${m.vampiro}</td><td>${m.umano}</td></tr>`).join('')}</tbody>
+                        <thead><tr><th>Data/Ora</th><th>Predatore</th><th>Vittima</th></tr></thead>
+                        <tbody>${gruppi[key].sort((a,b) => b.timestamp - a.timestamp).map(m => `<tr><td>${m.dataStr} ${m.ora}</td><td>${m.vampiro}</td><td><small>[${(m.tipoVittima || 'umano').toUpperCase()}]</small> ${m.umano}</td></tr>`).join('')}</tbody>
                     </table>
                 </div>
             </div>`).join('');
@@ -256,11 +289,38 @@ function renderClassificaMorsi(data, chiave, containerId) {
     
     container.innerHTML = rank.length === 0 ? "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>" : 
     rank.map((item, index) => `
-        <div class="rank-item ${index === 0 ? 'rank-top1' : index === 1 ? 'rank-top2' : index === 2 ? 'rank-top3' : ''}">
+        <div class="rank-item ${index < 3 ? 'rank-top' + (index + 1) : ''}">
             <span>${index + 1}. ${item[0]}</span>
-            <strong>${item[1]} morsi</strong>
+            <strong style="color: var(--gold-dim);">${item[1]} morsi</strong>
         </div>`).join('');
 }
+
+// --- LOGICA ADMIN MORSI ---
+window.renderAdminMorsi = () => {
+    const tbody = document.getElementById('admin-morsi-table-body');
+    if (!tbody) return;
+    const searchTerm = document.getElementById('search-admin-morsi').value.toLowerCase();
+    
+    tbody.innerHTML = morsi
+        .filter(m => m.vampiro.toLowerCase().includes(searchTerm) || m.umano.toLowerCase().includes(searchTerm))
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map(m => {
+            const tVittima = m.tipoVittima || 'umano'; 
+            return `
+            <tr>
+                <td style="font-size:0.65rem;">${m.dataStr}<br>${m.ora}</td>
+                <td>${m.vampiro}</td>
+                <td><small>[${tVittima.toUpperCase()}]</small> ${m.umano}</td>
+                <td style="font-size:0.6rem; opacity:0.6;">${getWeekRangeLabel(m.settimanaEtichetta)}</td>
+                <td><button class="btn-delete" onclick="window.adminDeleteMorso('${m.id}')">X</button></td>
+            </tr>`;
+        }).join('');
+};
+
+window.adminDeleteMorso = async (id) => {
+    const res = await Swal.fire({ title: 'Eliminare morso?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
+    if (res.isConfirmed) await deleteDoc(doc(db, "morsi", id));
+};
 
 // --- CLASSIFICHE VENDITE ---
 function renderClassifiche() {
@@ -282,10 +342,10 @@ function renderClassifiche() {
     const generateHtml = (arr) => {
         if(arr.length === 0) return "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>";
         return arr.map((item, index) => `
-            <div class="rank-item ${index === 0 ? 'rank-top1' : index === 1 ? 'rank-top2' : index === 2 ? 'rank-top3' : ''}">
+            <div class="rank-item ${index < 3 ? 'rank-top' + (index + 1) : ''}">
                 <span style="font-weight:600;">${index + 1}. ${item[0]}</span>
                 <div style="text-align: right; line-height: 1.2;">
-                    <strong style="display:block; color:var(--text-light); font-size:0.75rem;">${fmt(item[1].carbonio)}x Carb.</strong>
+                    <strong style="display:block; color: var(--gold-dim); font-size:0.75rem;">${fmt(item[1].carbonio)}x Carb.</strong>
                     <small style="color:var(--gold-accent); font-size:0.6rem; text-transform:uppercase;">${fmt(item[1].crediti)} cr</small>
                 </div>
             </div>`).join('');
@@ -303,7 +363,7 @@ window.movimentoSaldo = async () => {
     const motivo = document.getElementById('saldo-motivo').value;
     if(!nome || !importo || !motivo) return vampireToast("Compila tutti i campi richiesti.", "error");
     const nuovoSaldo = azione === "preleva" ? saldoGlobale - importo : saldoGlobale + importo;
-    if(nuovoSaldo < 0) return vampireToast("Saldo insufficiente per questa azione!", "error");
+    if(nuovoSaldo < 0) return vampireToast("Saldo insufficiente!", "error");
     const now = new Date();
     await setDoc(doc(db, "config", "saldo"), { valore: nuovoSaldo }, { merge: true });
     await addDoc(collection(db, "saldo_logs"), {
@@ -322,7 +382,7 @@ window.renderSaldoLogs = () => {
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span style="color: ${l.tipo === 'preleva' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo}</span> ${fmt(l.qty)} cr</span>
+                <span><strong>${l.utente}</strong> <span style="color: ${l.tipo === 'preleva' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo}</span> <span style="color: var(--gold-dim);">${fmt(l.qty)}</span> cr</span>
                 <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
             </div>
             <div class="log-causale">Motivo: ${l.motivo}</div>
@@ -380,7 +440,7 @@ window.eseguiCalcolo = () => {
     const listaHtml = filtrati.sort((a,b) => b.timestamp - a.timestamp).map(v => `
         <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
             <span>${v.dataStr} (${v.ora})</span>
-            <span>${v.qty}x - ${fmt(v.totale)} cr</span>
+            <span style="color: var(--gold-dim);">${v.qty}x - ${fmt(v.totale)} cr</span>
         </div>
     `).join('');
     document.getElementById('calc-res-lista-dettaglio').innerHTML = "<strong>Dettaglio Vendite:</strong>" + listaHtml;
@@ -400,7 +460,7 @@ window.registraVendita = async () => {
     await addDoc(collection(db, "vendite"), {
         nome, qty, foto, note, totale: tot, propria: tot * 0.4, dinastia: tot * 0.6,
         timestamp: Date.now(), dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT'),
-        settimanaEtichetta: getWeekYearKey(new Date())
+        settimanaEtichetta: getWeekYearKey(now)
     });
     vampireToast("Vendita sigillata nel registro.", "success");
     document.getElementById('vamp-qty').value = ""; document.getElementById('vamp-note').value = "";
@@ -416,7 +476,7 @@ window.renderVendite = () => {
         .map(v => `
         <tr>
             <td><span class="ts-label">${v.dataStr || ''}</span><strong>${v.ora || ''}</strong></td>
-            <td>${v.nome}</td><td>${fmt(v.qty)}x</td><td>${fmt(v.totale)}</td>
+            <td>${v.nome}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}x</td><td style="color: var(--gold-dim);">${fmt(v.totale)}</td>
             <td style="color:var(--success-green)">${fmt(v.propria)}</td>
             <td style="color:var(--gold-accent)">${fmt(v.dinastia)}</td>
             <td style="font-size: 0.7rem; opacity: 0.6;">${v.note || '-'}</td>
@@ -424,7 +484,7 @@ window.renderVendite = () => {
         </tr>`).join('');
 };
 
-// --- LOGICA INVENTARIO VISIVO ---
+// --- LOGICA INVENTARIO VISIVO (RIPRISTINATA INTEGRALMENTE) ---
 window.renderInventario = () => {
     const searchTerm = document.getElementById('search-inventario').value.toLowerCase();
     [1, 2, 3].forEach(n => {
@@ -436,7 +496,7 @@ window.renderInventario = () => {
                 .sort((a,b) => a.id.localeCompare(b.id))
                 .map(i => `
                     <div class="inv-box" onclick="window.openInvQuickAction('${i.id}')">
-                        <span class="inv-qty-badge">${fmt(i.qty)}</span>
+                        <span class="inv-qty-badge" style="background: var(--gold-accent); color: #000;">${fmt(i.qty)}</span>
                         <img class="inv-img" src="${i.foto || 'https://via.placeholder.com/100/121212/8b0000?text=?'}" 
                              onerror="this.src='https://via.placeholder.com/100/121212/8b0000?text=?'">
                         <span class="inv-name">${i.id}</span>
@@ -482,7 +542,7 @@ window.renderLogs = () => {
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span style="color: ${l.tipo === 'prendi' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo}</span> ${fmt(l.qty)}x ${l.item}</span>
+                <span><strong>${l.utente}</strong> <span style="color: ${l.tipo === 'prendi' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo}</span> <span style="color: var(--gold-dim); font-weight: bold;">${fmt(l.qty)}x</span> ${l.item}</span>
                 <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
             </div>
             <div class="log-causale">Motivo: ${l.motivo || 'N/D'}</div>
@@ -498,7 +558,7 @@ window.checkAccess = () => {
     if(passInput === PASSWORD_GDR) {
         document.getElementById('login-container-gestione').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
-        window.renderAdminTable(); window.renderArchivioGestione(); window.renderAdminLogs(); window.renderAdminSaldoLogs();
+        window.renderAdminMorsi(); window.renderAdminTable(); window.renderArchivioGestione(); window.renderAdminLogs(); window.renderAdminSaldoLogs();
         renderVampiriLists(); renderDinamici(); aggiornaStats(); 
         vampireToast("Accesso Gestore garantito.", "success");
     } else { 
@@ -581,7 +641,7 @@ window.renderAdminLogs = () => {
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span>${l.tipo}</span> ${fmt(l.qty)}x ${l.item}</span>
+                <span><strong>${l.utente}</strong> <span>${l.tipo}</span> <span style="color: var(--gold-dim);">${fmt(l.qty)}</span>x ${l.item}</span>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
                     <button class="btn-delete" onclick="window.adminDeleteLog('${l.id}')">ELIMINA</button>
@@ -599,7 +659,7 @@ window.renderAdminSaldoLogs = () => {
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span>${l.tipo}</span> ${fmt(l.qty)} cr</span>
+                <span><strong>${l.utente}</strong> <span>${l.tipo}</span> <span style="color: var(--gold-dim); font-weight: bold;">${fmt(l.qty)}</span> cr</span>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
                     <button class="btn-delete" onclick="window.adminDeleteSaldoLog('${l.id}')">X</button>
@@ -623,9 +683,9 @@ window.renderArchivioGestione = () => {
         const weekTotalDinastia = filtered.reduce((sum, v) => sum + v.dinastia, 0);
         
         return `<div class="week-archive-block">
-            <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr | Ekaton (50%): ${fmt(Math.floor(weekTotalDinastia * 0.5))} cr</div>
+            <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: <span style="color: var(--gold-dim);">${fmt(weekTotalQty)}x</span> | Dinastia: <span style="color: var(--gold-dim);">${fmt(weekTotalDinastia)} cr</span> | Ekaton (50%): <span style="color: var(--gold-dim);">${fmt(Math.floor(weekTotalDinastia * 0.5))} cr</span></div>
             <div style="overflow-x:auto;"><table><thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Qty</th><th>Propria</th><th>Dinastia</th><th>Note</th><th>Azione</th></tr></thead>
-            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr}<br>${v.ora}</td><td>${v.nome}</td><td>${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
+            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr}<br>${v.ora}</td><td>${v.nome}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
     }).join('');
 };
 
@@ -642,7 +702,9 @@ window.logoutAdmin = async () => {
     
     if(res.isConfirmed) {
         vampireToast("Sessione chiusa correttamente.", "info");
-        setTimeout(() => { location.reload(); }, 800);
+        setTimeout(() => {
+            location.reload();
+        }, 800);
     }
 };
 
@@ -651,20 +713,23 @@ window.popolaSelectOggetti = () => {
     if(select) select.innerHTML = inventarioDati.sort((a,b) => a.id.localeCompare(b.id)).map(i => `<option value="${i.id}">${i.id}</option>`).join('');
 };
 
-// --- TIME UTILS ---
+// --- TIME UTILS (FIXED SETTIMANA) ---
 function getWeekYearKey(date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return d.getUTCFullYear() + "-W" + Math.ceil((((d - yearStart) / 86400000) + 1) / 7).toString().padStart(2, '0');
+    const d = new Date(date.getTime());
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return d.getFullYear() + "-W" + weekNo.toString().padStart(2, '0');
 }
 
 function getWeekRangeLabel(weekKey) {
     const [year, week] = weekKey.split('-W');
     const simple = new Date(year, 0, 1 + (week - 1) * 7);
-    const ISOweekStart = simple; ISOweekStart.setDate(simple.getDate() - (simple.getDay() || 7) + 1);
-    const ISOweekEnd = new Date(ISOweekStart); ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
+    const ISOweekStart = new Date(simple); 
+    ISOweekStart.setDate(simple.getDate() - (simple.getDay() || 7) + 1);
+    const ISOweekEnd = new Date(ISOweekStart); 
+    ISOweekEnd.setDate(ISOweekStart.getDate() + 6);
     return `${ISOweekStart.toLocaleDateString('it-IT', {day:'2-digit', month:'short'})} - ${ISOweekEnd.toLocaleDateString('it-IT', {day:'2-digit', month:'short'})}`;
 }
 
@@ -711,6 +776,7 @@ onSnapshot(collection(db, "inventario"), (snapshot) => {
 onSnapshot(collection(db, "morsi"), (snapshot) => { 
     morsi = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
     window.renderMorsi(); 
+    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminMorsi();
 });
 
 onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });

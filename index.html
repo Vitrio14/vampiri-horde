@@ -81,23 +81,23 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Carbonio (Settimana)</h3>
-                    <p id="tot-qty-sett">0x</p>
+                    <p id="tot-qty-sett" style="color: var(--gold-dim);">0x</p>
                 </div>
                 <div class="stat-card">
                     <h3>Crediti Carbonio (Settimana)</h3>
-                    <p id="tot-dinastia-sett">0 cr</p>
+                    <p id="tot-dinastia-sett" style="color: var(--gold-dim);">0 cr</p>
                 </div>
                 <div class="stat-card">
                     <h3>Ekaton (Settimana)</h3>
-                    <p id="tot-ekaton-sett">0 cr</p>
+                    <p id="tot-ekaton-sett" style="color: var(--gold-dim);">0 cr</p>
                 </div>
                 <div class="stat-card">
                     <h3>Vendite (Freq. Sett.)</h3>
-                    <p id="tot-count-sett">0</p>
+                    <p id="tot-count-sett" style="color: var(--gold-dim);">0</p>
                 </div>
                 <div class="stat-card">
                     <h3>Fondo Cassa</h3>
-                    <p id="tot-saldo-globale">0 cr</p>
+                    <p id="tot-saldo-globale" style="color: var(--gold-dim);">0 cr</p>
                 </div>
             </div>
 
@@ -199,9 +199,9 @@
                 <button onclick="window.eseguiCalcolo()">Calcola</button>
                 <div id="calc-result" class="calc-result-box">
                     <h3 id="calc-res-nome" style="color: var(--gold-accent); margin-bottom: 15px;">-</h3>
-                    <div class="calc-item"><span>Carbonio Venduto</span><span id="calc-res-qty">0</span></div>
-                    <div class="calc-item"><span>Numero Vendite</span><span id="calc-res-count">0</span></div>
-                    <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-tot">0 cr</span></div>
+                    <div class="calc-item"><span>Carbonio Venduto</span><span id="calc-res-qty" style="color: var(--gold-dim);">0</span></div>
+                    <div class="calc-item"><span>Numero Vendite</span><span id="calc-res-count" style="color: var(--gold-dim);">0</span></div>
+                    <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-tot" style="color: var(--gold-dim);">0 cr</span></div>
                     <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 15px; padding-top: 15px;">
                         <span style="color: var(--success-green);">Quota Propria (40%)</span>
                         <span id="calc-res-vamp" style="color: var(--success-green);">0 cr</span>
@@ -245,11 +245,11 @@
                 <h2 style="text-align: center;">🏆 Classifiche Morsi</h2>
                 <div class="morsi-grid-classifiche">
                     <div class="morsi-col">
-                        <h4>Vampiri (Settimana)</h4>
+                        <h4>Top Predatori (Settimana)</h4>
                         <div id="morsi-vamp-sett-box"></div>
                     </div>
                     <div class="morsi-col">
-                        <h4>Vampiri (Totale)</h4>
+                        <h4>Top Predatori (Totale)</h4>
                         <div id="morsi-vamp-tot-box"></div>
                     </div>
                     <div class="morsi-col">
@@ -260,19 +260,42 @@
                         <h4>Umani Morsi (Totale)</h4>
                         <div id="morsi-umani-tot-box"></div>
                     </div>
+                    <div class="morsi-col" style="border-color: var(--blood-red);">
+                        <h4>Vampiri Morsi (Settimana)</h4>
+                        <div id="morsi-vampiri-vittime-sett-box"></div>
+                    </div>
+                    <div class="morsi-col" style="border-color: var(--blood-red);">
+                        <h4>Vampiri Morsi (Totale)</h4>
+                        <div id="morsi-vampiri-vittime-tot-box"></div>
+                    </div>
+                    <div class="morsi-col" style="border-color: var(--blood-red);">
+    <h4>Predatori di Vampiri (Settimana)</h4>
+    <div id="morsi-vampiri-predatori-sett-box"></div>
+</div>
+<div class="morsi-col" style="border-color: var(--blood-red);">
+    <h4>Predatori di Vampiri (Totale)</h4>
+    <div id="morsi-vampiri-predatori-tot-box"></div>
+</div>
                 </div>
             </div>
 
             <div class="vamp-card">
                 <h2>Registra Nuovo Morso</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                     <div class="form-group">
-                        <label>Vampiro</label>
+                        <label>Vampiro Predatore</label>
                         <select id="morso-vamp-select" class="vampiro-select-list"></select>
                     </div>
                     <div class="form-group">
-                        <label>Umano Morso</label>
-                        <input type="text" id="morso-umano-nome" placeholder="Nome Cognome...">
+                        <label>Tipo Vittima</label>
+                        <select id="morso-tipo-vittima">
+                            <option value="umano">Umano</option>
+                            <option value="vampiro">Vampiro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome Vittima</label>
+                        <input type="text" id="morso-umano-nome" placeholder="Nome Vittima...">
                     </div>
                 </div>
                 <button onclick="window.registraMorso()">Registra Morso</button>
@@ -285,7 +308,7 @@
                         <tr>
                             <th>Data/Ora</th>
                             <th>Vampiro</th>
-                            <th>Umano</th>
+                            <th>Vittima</th>
                             <th>Stato</th>
                         </tr>
                     </thead>
@@ -354,19 +377,19 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Carbonio Venduto (TOTALE STORICO)</h3>
-                        <p id="admin-tot-qty-storico">0x</p>
+                        <p id="admin-tot-qty-storico" style="color: var(--gold-dim);">0x</p>
                     </div>
                     <div class="stat-card">
                         <h3>Crediti Dinastia (TOTALE STORICO)</h3>
-                        <p id="admin-tot-dinastia-storico">0 cr</p>
+                        <p id="admin-tot-dinastia-storico" style="color: var(--gold-dim);">0 cr</p>
                     </div>
                     <div class="stat-card">
                         <h3>Crediti Ekaton (TOTALE STORICO)</h3>
-                        <p id="admin-tot-ekaton-storico">0 cr</p>
+                        <p id="admin-tot-ekaton-storico" style="color: var(--gold-dim);">0 cr</p>
                     </div>
                     <div class="stat-card">
                         <h3>Vendite Totali (STORICO)</h3>
-                        <p id="admin-tot-count-storico">0</p>
+                        <p id="admin-tot-count-storico" style="color: var(--gold-dim);">0</p>
                     </div>
                 </div>
 
@@ -378,6 +401,27 @@
                             <input type="number" id="admin-saldo-val" onkeydown="if(event.key==='Enter') window.adminUpdateSaldo()">
                         </div>
                         <button onclick="window.adminUpdateSaldo()" style="width: auto; padding: 14px 25px;">Aggiorna</button>
+                    </div>
+                </div>
+
+                <div class="vamp-card">
+                    <h2>Gestione Database Morsi</h2>
+                    <div class="search-box">
+                        <input type="text" id="search-admin-morsi" placeholder="Filtra morsi (vampiro o vittima)..." onkeyup="window.renderAdminMorsi()">
+                    </div>
+                    <div class="scroll-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Predatore</th>
+                                    <th>Vittima</th>
+                                    <th>Settimana</th>
+                                    <th>Azione</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-morsi-table-body"></tbody>
+                        </table>
                     </div>
                 </div>
 
