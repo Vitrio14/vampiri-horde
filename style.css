@@ -78,7 +78,14 @@ nav {
 
 .logo-container { display: flex; align-items: center; gap: 12px; }
 .logo-container h1 { font-size: 1rem; color: var(--gold-accent); font-weight: 600; text-transform: uppercase; }
-.logo-img { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--gold-accent); filter: drop-shadow(0 0 5px var(--blood-red)); }
+.logo-img { 
+    width: 38px; 
+    height: 38px; 
+    border-radius: 50%; 
+    border: 1px solid var(--gold-accent); 
+    filter: drop-shadow(0 0 5px var(--blood-red));
+    object-fit: cover; /* Evita schiacciamento logo */
+}
 
 .nav-links { display: flex; gap: 25px; }
 .nav-link {
@@ -180,13 +187,12 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     text-transform: uppercase;
 }
 
-/* Container griglia con SCROLL AUTOMATICO dopo ~2 righe (circa 6-8 item) */
 .inv-grid-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
     gap: 10px;
     padding: 5px;
-    max-height: 220px; /* Altezza fissa per innescare lo scroll */
+    max-height: 220px; 
     overflow-y: auto;
 }
 
@@ -217,7 +223,9 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
 .inv-img {
     width: 40px;
     height: 40px;
-    object-fit: contain;
+    /* FIX: Cambiato object-fit e rimosso vincoli che causano distorsione */
+    object-fit: contain; 
+    flex-shrink: 0; /* Impedisce che l'immagine venga schiacciata dal testo */
     filter: drop-shadow(0 0 8px rgba(0,0,0,0.6));
     margin-bottom: 5px;
 }
@@ -230,6 +238,8 @@ button.btn-delete:hover { background: var(--withdraw-red); color: white; }
     letter-spacing: 0.5px;
     line-height: 1.1;
     word-break: break-word;
+    /* FIX: Assicura che il testo non spinga l'immagine */
+    max-width: 100%;
 }
 
 .inv-qty-badge {
