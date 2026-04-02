@@ -214,32 +214,58 @@ window.renderSaldoLogs = () => {
         </div>`).join('');
 };
 
-// --- LOGICA CALCOLO ---
+// --- LOGICA CALCOLO (FILTRATA) ---
+function popolaFiltroSettimane() {
+    const filter = document.getElementById('calc-period-filter');
+    if(!filter) return;
+    const valCorrente = filter.value;
+    const settimaneUniche = [...new Set(vendite.map(v => v.settimanaEtichetta))].sort().reverse();
+    
+    let options = `<option value="current">Settimana Corrente</option><option value="all">Totale Storico</option>`;
+    settimaneUniche.forEach(s => {
+        const range = getWeekRangeLabel(s);
+        options += `<option value="${s}">Settimana: ${range}</option>`;
+    });
+    filter.innerHTML = options;
+    filter.value = valCorrente;
+}
+
 window.eseguiCalcolo = () => {
     const nomeInput = document.getElementById('calc-search-name').value;
+    const periodo = document.getElementById('calc-period-filter').value;
     if(!nomeInput) return vampireToast("Seleziona un vampiro", "error");
+    
     const resBox = document.getElementById('calc-result');
-    const currentWeek = getWeekYearKey(new Date());
-    const filtrati = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome === nomeInput);
+    let filtrati = [];
+
+    if(periodo === "all") {
+        filtrati = vendite.filter(v => v.nome === nomeInput);
+    } else if(periodo === "current") {
+        const currentWeek = getWeekYearKey(new Date());
+        filtrati = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome === nomeInput);
+    } else {
+        filtrati = vendite.filter(v => v.settimanaEtichetta === periodo && v.nome === nomeInput);
+    }
+
     if(filtrati.length === 0) { resBox.style.display = "none"; return vampireToast("Nessun record trovato.", "error"); }
+    
     const totQty = filtrati.reduce((a, b) => a + b.qty, 0);
     const totCr = filtrati.reduce((a, b) => a + b.totale, 0);
+    
     document.getElementById('calc-res-nome').innerText = nomeInput.toUpperCase();
     document.getElementById('calc-res-qty').innerText = fmt(totQty);
     document.getElementById('calc-res-tot').innerText = fmt(totCr) + " cr";
     document.getElementById('calc-res-vamp').innerText = fmt(totCr * 0.4) + " cr";
     document.getElementById('calc-res-din').innerText = fmt(totCr * 0.6) + " cr";
-    
-    // NUOVO: Conteggio e Dettaglio
     document.getElementById('calc-res-count').innerText = filtrati.length;
-    const listaHtml = filtrati.map(v => `
+    
+    const listaHtml = filtrati.sort((a,b) => b.timestamp - a.timestamp).map(v => `
         <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
             <span>${v.dataStr} (${v.ora})</span>
             <span>${v.qty}x - ${fmt(v.totale)} cr</span>
         </div>
     `).join('');
     document.getElementById('calc-res-lista-dettaglio').innerHTML = "<strong>Dettaglio Vendite:</strong>" + listaHtml;
-
     resBox.style.display = "block"; vampireToast("Resoconto generato.", "success");
 };
 
@@ -440,7 +466,6 @@ window.renderArchivioGestione = () => {
         const weekTotalQty = filtered.reduce((sum, v) => sum + v.qty, 0);
         const weekTotalDinastia = filtered.reduce((sum, v) => sum + v.dinastia, 0);
         
-        // MODIFICATO: Inserito contatore Vendite
         return `<div class="week-archive-block">
             <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: ${fmt(weekTotalQty)}x | Dinastia: ${fmt(weekTotalDinastia)} cr | Ekaton (50%): ${fmt(Math.floor(weekTotalDinastia * 0.5))} cr</div>
             <div style="overflow-x:auto;"><table><thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Qty</th><th>Propria</th><th>Dinastia</th><th>Note</th><th>Azione</th></tr></thead>
@@ -476,20 +501,17 @@ function aggiornaStats() {
     const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
     const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + curr.dinastia, 0);
     const totaleQtySett = correnti.reduce((acc, curr) => acc + curr.qty, 0);
-    const ekatonStorico = vendite.reduce((acc, curr) => acc + curr.dinastia, 0) * 0.5;
+    const dinastiaStorico = vendite.reduce((acc, curr) => acc + curr.dinastia, 0);
+    const ekatonStorico = dinastiaStorico * 0.5;
     
     if(document.getElementById('tot-dinastia-sett')) document.getElementById('tot-dinastia-sett').innerText = fmt(totaleDinastiaSettimana) + " cr";
     if(document.getElementById('tot-ekaton-sett')) document.getElementById('tot-ekaton-sett').innerText = fmt(Math.floor(totaleDinastiaSettimana * 0.5)) + " cr";
     if(document.getElementById('tot-qty-sett')) document.getElementById('tot-qty-sett').innerText = fmt(totaleQtySett) + "x";
-    
-    // NUOVO: Frequenza settimanale
     if(document.getElementById('tot-count-sett')) document.getElementById('tot-count-sett').innerText = correnti.length;
 
     if(document.getElementById('admin-tot-qty-storico')) document.getElementById('admin-tot-qty-storico').innerText = fmt(vendite.reduce((acc, curr) => acc + curr.qty, 0)) + "x";
-    if(document.getElementById('admin-tot-dinastia-storico')) document.getElementById('admin-tot-dinastia-storico').innerText = fmt(vendite.reduce((acc, curr) => acc + curr.dinastia, 0)) + " cr";
+    if(document.getElementById('admin-tot-dinastia-storico')) document.getElementById('admin-tot-dinastia-storico').innerText = fmt(dinastiaStorico) + " cr";
     if(document.getElementById('admin-tot-ekaton-storico')) document.getElementById('admin-tot-ekaton-storico').innerText = fmt(Math.floor(ekatonStorico)) + " cr";
-    
-    // NUOVO: Vendite totali storico
     if(document.getElementById('admin-tot-count-storico')) document.getElementById('admin-tot-count-storico').innerText = vendite.length;
 }
 
@@ -498,7 +520,14 @@ function aggiornaStats() {
 onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
 onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
 onSnapshot(query(collection(db, "documenti"), orderBy("timestamp", "desc")), (snap) => { documenti = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
-onSnapshot(collection(db, "vendite"), (snapshot) => { vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderVendite(); renderClassifiche(); aggiornaStats(); if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); });
+onSnapshot(collection(db, "vendite"), (snapshot) => { 
+    vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+    window.renderVendite(); 
+    renderClassifiche(); 
+    aggiornaStats(); 
+    popolaFiltroSettimane();
+    if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
+});
 onSnapshot(collection(db, "inventario"), (snapshot) => { inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderInventario(); window.popolaSelectOggetti(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); });
 onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
 onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderSaldoLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminSaldoLogs(); });

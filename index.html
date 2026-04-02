@@ -185,11 +185,18 @@
                     <label>Nome del Vampiro</label>
                     <select id="calc-search-name" class="vampiro-select-list"></select>
                 </div>
+                <div class="form-group">
+                    <label>Periodo / Settimana</label>
+                    <select id="calc-period-filter">
+                        <option value="current">Settimana Corrente</option>
+                        <option value="all">Totale Storico</option>
+                    </select>
+                </div>
                 <button onclick="eseguiCalcolo()">Calcola</button>
                 <div id="calc-result" class="calc-result-box">
                     <h3 id="calc-res-nome" style="color: var(--gold-accent); margin-bottom: 15px;">-</h3>
                     <div class="calc-item"><span>Carbonio Venduto</span><span id="calc-res-qty">0</span></div>
-                    <div class="calc-item"><span>Numero Vendite Sett.</span><span id="calc-res-count">0</span></div>
+                    <div class="calc-item"><span>Numero Vendite</span><span id="calc-res-count">0</span></div>
                     <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-tot">0 cr</span></div>
                     <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 15px; padding-top: 15px;">
                         <span style="color: var(--success-green);">Quota Propria (40%)</span>
