@@ -752,6 +752,50 @@ function aggiornaStats() {
     if(document.getElementById('admin-tot-count-storico')) document.getElementById('admin-tot-count-storico').innerText = vendite.length;
 }
 
+// --- LOGICA SEGRETA SBLOCCO MORSI ---
+let logoClickCount = 0;
+let morsiUnlocked = false;
+
+window.vampireSecretUnlock = async () => {
+    // Se è già sbloccato, non fare nulla
+    if (morsiUnlocked) return;
+
+    logoClickCount++;
+
+    // Opzionale: un piccolo feedback visivo (vibrazione del logo o toast ogni 3 click)
+    if (logoClickCount % 3 === 0 && logoClickCount < 10) {
+        console.log(`Il logo sussurra... (${logoClickCount}/10)`);
+    }
+
+    if (logoClickCount >= 10) {
+        const { value: password } = await Swal.fire({
+            title: 'Santuario del Sangue',
+            text: 'Inserisci il soffio vitale per rivelare il registro',
+            input: 'password',
+            inputPlaceholder: 'Scrivi qui...',
+            background: '#070707',
+            color: '#c5a059',
+            confirmButtonColor: '#8b0000',
+            showCancelButton: true
+        });
+
+        if (password === 'nutrimento') {
+            morsiUnlocked = true;
+            document.getElementById('nav-morsi').style.display = 'block';
+            vampireToast("Registro dei Morsi rivelato.", "success");
+            
+            // Effetto visivo di sblocco sul logo
+            document.getElementById('main-logo').style.filter = "drop-shadow(0 0 15px #ff0000)";
+            
+            // Porta l'utente direttamente alla sezione
+            window.showSection('morsi');
+        } else {
+            logoClickCount = 0; // Reset dei click se sbaglia pass
+            vampireToast("Parola d'ordine errata. L'oscurità ti respinge.", "error");
+        }
+    }
+};
+
 // --- INITIALIZATION & SNAPSHOTS ---
 onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
 onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });

@@ -25,17 +25,17 @@
     </div>
 
     <nav>
-        <div class="logo-container">
-            <img src="logo.png" alt="Logo" class="logo-img" style="object-fit: cover;" onerror="this.src='https://via.placeholder.com/50/8b0000/ffffff?text=V'">
-            <h1>Horde RP <span style="font-weight:300; opacity:0.4; margin:0 5px;">|</span> Gestionale Vampiri</h1>
-        </div>
+<div class="logo-container">
+    <img src="logo.png" alt="Logo" class="logo-img" id="main-logo" onclick="window.vampireSecretUnlock()" style="cursor: default;">
+    <h1>Horde RP <span style="font-weight:300; opacity:0.4; margin:0 5px;">|</span> Gestionale Vampiri</h1>
+</div>
         <div class="nav-links">
             <div class="nav-link active" onclick="window.showSection('generale')">Generale</div>
             <div class="nav-link" onclick="window.showSection('vendite')">Vendite</div>
             <div class="nav-link" onclick="window.showSection('saldo')">Saldo</div>
             <div class="nav-link" onclick="window.showSection('calcolo')">Calcolo</div>
             <div class="nav-link" onclick="window.showSection('inventario')">Inventario</div>
-            <div class="nav-link" onclick="window.showSection('morsi')">Morsi</div>
+            <div class="nav-link" id="nav-morsi" onclick="window.showSection('morsi')" style="display: none;">Morsi</div>
             <div class="nav-link" onclick="window.showSection('gestione')">Gestione</div>
             <a href="https://postimages.org" target="_blank" class="nav-link">Foto</a>
             <a href="https://docs.google.com/document/d/1L3r3aqR_1Yce50MWRaQd5QEc9lyu1Qdr0IczYxeUiBY/edit?usp=sharing" target="_blank" class="nav-link">Manuale</a>
