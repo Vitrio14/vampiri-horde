@@ -326,16 +326,21 @@ window.adminDeleteMorso = async (id) => {
 function renderClassifiche() {
     const currentWeek = getWeekYearKey(new Date());
     const mapSett = {};
+    
+    // Filtro Settimanale: accumulo solo la quota 'dinastia'
     vendite.filter(v => v.settimanaEtichetta === currentWeek).forEach(v => {
         if (!mapSett[v.nome]) mapSett[v.nome] = { carbonio: 0, crediti: 0 };
-        mapSett[v.nome].carbonio += v.qty; mapSett[v.nome].crediti += v.totale;
+        mapSett[v.nome].carbonio += v.qty; 
+        mapSett[v.nome].crediti += v.dinastia; // <--- MODIFICATO: da v.totale a v.dinastia
     });
     const rankSett = Object.entries(mapSett).sort((a,b) => b[1].carbonio - a[1].carbonio);
 
     const mapSempre = {};
+    // Filtro Storico: accumulo solo la quota 'dinastia'
     vendite.forEach(v => {
         if (!mapSempre[v.nome]) mapSempre[v.nome] = { carbonio: 0, crediti: 0 };
-        mapSempre[v.nome].carbonio += v.qty; mapSempre[v.nome].crediti += v.totale;
+        mapSempre[v.nome].carbonio += v.qty; 
+        mapSempre[v.nome].crediti += v.dinastia; // <--- MODIFICATO: da v.totale a v.dinastia
     });
     const rankSempre = Object.entries(mapSempre).sort((a,b) => b[1].crediti - a[1].crediti);
 
@@ -346,7 +351,7 @@ function renderClassifiche() {
                 <span style="font-weight:600;">${index + 1}. ${item[0]}</span>
                 <div style="text-align: right; line-height: 1.2;">
                     <strong style="display:block; color: var(--gold-dim); font-size:0.75rem;">${fmt(item[1].carbonio)}x Carb.</strong>
-                    <small style="color:var(--gold-accent); font-size:0.6rem; text-transform:uppercase;">${fmt(item[1].crediti)} cr</small>
+                    <small style="color:var(--gold-accent); font-size:0.6rem; text-transform:uppercase;">${fmt(item[1].crediti)} cr</small> 
                 </div>
             </div>`).join('');
     };
