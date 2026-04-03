@@ -60,11 +60,24 @@ h1, h2, h3, .nav-link { font-family: 'Cinzel', serif; letter-spacing: 1.5px; }
     z-index: 500; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);
 }
 
-/* Scroll Boxes Dinamici */
-#lista-membri-dinamica, #comunicazioni-box, #documenti-box, #top-settimana-box, #top-sempre-box, #morsi-vamp-sett-box, #morsi-vamp-tot-box, #morsi-umani-sett-box, #morsi-umani-tot-box {
-    max-height: 200px; overflow-y: auto; padding-right: 10px;
+/* Scroll Boxes Dinamici per tutte le classifiche */
+#lista-membri-dinamica, 
+#comunicazioni-box, 
+#documenti-box, 
+#top-settimana-box, 
+#top-sempre-box, 
+#morsi-vamp-sett-box, 
+#morsi-vamp-tot-box, 
+#morsi-umani-sett-box, 
+#morsi-umani-tot-box,
+#morsi-vampiri-predatori-sett-box,
+#morsi-vampiri-predatori-tot-box,
+#morsi-vampiri-vittime-sett-box,
+#morsi-vampiri-vittime-tot-box {
+    max-height: 180px; /* Altezza per circa 5 righe */
+    overflow-y: auto; 
+    padding-right: 10px;
 }
-
 /* Navbar */
 nav {
     background: var(--glass-bg);
