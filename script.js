@@ -20,10 +20,16 @@ let inventarioDati = [];
 let logs = [];
 let saldoLogs = [];
 let morsi = []; 
+let dungeonDati = [];
+let conquisteDati = [];
 let saldoGlobale = 0;
 let listaVampiri = [];
 let comunicazioni = [];
 let documenti = [];
+
+// Variabili per gestione squadre dinamiche (UI temporanea)
+let squadraDungeonTemp = [];
+let squadraConquistaTemp = [];
 
 const PASSWORD_GLOBAL = "2026";
 const PASSWORD_GDR = "7711"; 
@@ -86,7 +92,7 @@ window.showSection = (id) => {
     window.scrollTo(0, 0); 
 };
 
-// --- GESTIONE DINAMICA ---
+// --- GESTIONE DINAMICA (COMUNICAZIONI/DOC) ---
 window.addDinamico = async (col) => {
     const pref = col === 'comunicazioni' ? 'adm-com-' : 'adm-doc-';
     const titolo = document.getElementById(pref + 'titolo').value.trim();
@@ -208,7 +214,6 @@ window.renderMorsi = () => {
     const currentWeek = getWeekYearKey(new Date());
     const morsiSettimana = morsi.filter(m => m.settimanaEtichetta === currentWeek);
 
-    // 1. Render Tabella Recenti
     tbody.innerHTML = morsiSettimana.sort((a,b) => b.timestamp - a.timestamp).map(m => {
         const tVittima = m.tipoVittima || 'umano'; 
         let statusHTML = "";
@@ -234,33 +239,25 @@ window.renderMorsi = () => {
             </tr>`;
     }).join('');
 
-    // --- LOGICA CLASSIFICHE SEPARATE ---
-
-    // 1. PREDATORI DI UMANI (Vampiri che mordono Umani)
     const predUmaniSett = morsiSettimana.filter(m => (m.tipoVittima || 'umano') === 'umano');
     const predUmaniTot = morsi.filter(m => (m.tipoVittima || 'umano') === 'umano');
     renderClassificaMorsi(predUmaniSett, 'vampiro', 'morsi-vamp-sett-box');
     renderClassificaMorsi(predUmaniTot, 'vampiro', 'morsi-vamp-tot-box');
 
-    // 2. PREDATORI DI VAMPIRI (Vampiri che mordono Vampiri)
     const predVampiriSett = morsiSettimana.filter(m => m.tipoVittima === 'vampiro');
     const predVampiriTot = morsi.filter(m => m.tipoVittima === 'vampiro');
     renderClassificaMorsi(predVampiriSett, 'vampiro', 'morsi-vampiri-predatori-sett-box');
     renderClassificaMorsi(predVampiriTot, 'vampiro', 'morsi-vampiri-predatori-tot-box');
 
-    // 3. VITTIME UMANE (Umani più morsi)
     const vittimeUmaneSett = morsiSettimana.filter(m => (m.tipoVittima || 'umano') === 'umano');
     const vittimeUmaneTot = morsi.filter(m => (m.tipoVittima || 'umano') === 'umano');
     renderClassificaMorsi(vittimeUmaneSett, 'umano', 'morsi-umani-sett-box');
     renderClassificaMorsi(vittimeUmaneTot, 'umano', 'morsi-umani-tot-box');
 
-    // 4. VITTIME VAMPIRI (Vampiri più morsi)
     const vittimeVampSett = morsiSettimana.filter(m => m.tipoVittima === 'vampiro');
     const vittimeVampTot = morsi.filter(m => m.tipoVittima === 'vampiro');
     renderClassificaMorsi(vittimeVampSett, 'umano', 'morsi-vampiri-vittime-sett-box');
     renderClassificaMorsi(vittimeVampTot, 'umano', 'morsi-vampiri-vittime-tot-box');
-
-    // --- FINE LOGICA CLASSIFICHE ---
 
     const containerArchivio = document.getElementById('archivio-morsi-container');
     if(containerArchivio) {
@@ -295,6 +292,199 @@ function renderClassificaMorsi(data, chiave, containerId) {
         </div>`).join('');
 }
 
+// --- LOGICA DUNGEON ---
+window.aggiungiMembroSquadra = () => {
+    const nome = document.getElementById('dungeon-select-membro').value;
+    if(!nome) return;
+    if(squadraDungeonTemp.includes(nome)) return vampireToast("Membro già in squadra.", "error");
+    squadraDungeonTemp.push(nome);
+    renderSquadraTemp();
+};
+
+function renderSquadraTemp() {
+    const box = document.getElementById('squadra-temporanea');
+    if(!box) return;
+    box.innerHTML = squadraDungeonTemp.map(n => `
+        <div class="status-badge status-attivo" style="display:flex; align-items:center; gap:8px;">
+            ${n} <span onclick="window.rimuoviMembroSquadra('${n}')" style="cursor:pointer; font-weight:bold;">×</span>
+        </div>`).join('');
+}
+
+window.rimuoviMembroSquadra = (nome) => {
+    squadraDungeonTemp = squadraDungeonTemp.filter(n => n !== nome);
+    renderSquadraTemp();
+};
+
+window.avviaDungeon = async () => {
+    const livello = document.getElementById('dungeon-livello').value;
+    if(squadraDungeonTemp.length === 0) return vampireToast("Seleziona almeno un membro.", "error");
+
+    const now = new Date();
+    const oraInizio = Date.now();
+    await addDoc(collection(db, "dungeon"), {
+        squadra: squadraDungeonTemp,
+        livello: livello,
+        inizio: oraInizio,
+        scadenza: oraInizio + (30 * 60 * 1000),
+        dataStr: now.toLocaleDateString('it-IT'),
+        oraStr: now.toLocaleTimeString('it-IT')
+    });
+
+    squadraDungeonTemp = [];
+    renderSquadraTemp();
+    vampireToast("Incursione iniziata. Il tempo scorre...", "success");
+};
+
+function updateDungeonTimers() {
+    const tbody = document.getElementById('lista-dungeon');
+    if(!tbody) return;
+
+    tbody.innerHTML = dungeonDati.sort((a,b) => b.inizio - a.inizio).map(d => {
+        const oraAttuale = Date.now();
+        const diff = d.scadenza - oraAttuale;
+        let timerHTML = "";
+
+        if(diff > 0) {
+            const min = Math.floor(diff / 60000);
+            const sec = Math.floor((diff % 60000) / 1000);
+            timerHTML = `<span class="status-badge status-attivo">${min}m ${sec}s</span>`;
+        } else {
+            timerHTML = `<span class="status-badge status-passato">Scaduto</span>`;
+        }
+
+        return `
+            <tr>
+                <td><span class="ts-label">${d.dataStr || ''}</span> <strong>${d.squadra.join(', ')}</strong></td>
+                <td>Livello ${d.livello}</td>
+                <td>${timerHTML}</td>
+                <td style="font-size:0.7rem; opacity:0.6;">${d.oraStr || new Date(d.inizio).toLocaleTimeString()}</td>
+            </tr>`;
+    }).join('');
+}
+
+setInterval(updateDungeonTimers, 1000);
+
+// --- LOGICA CONQUISTE ---
+window.aggiungiMembroConquista = () => {
+    const nome = document.getElementById('conquista-select-membro').value;
+    if(!nome) return;
+    if(squadraConquistaTemp.includes(nome)) return vampireToast("Membro già in squadra.", "error");
+    squadraConquistaTemp.push(nome);
+    renderSquadraConquistaTemp();
+};
+
+function renderSquadraConquistaTemp() {
+    const box = document.getElementById('squadra-conquista-temporanea');
+    if(!box) return;
+    box.innerHTML = squadraConquistaTemp.map(n => `
+        <div class="status-badge status-attivo" style="display:flex; align-items:center; gap:8px; border-color: var(--gold-accent);">
+            ${n} <span onclick="window.rimuoviMembroConquista('${n}')" style="cursor:pointer; font-weight:bold;">×</span>
+        </div>`).join('');
+}
+
+window.rimuoviMembroConquista = (nome) => {
+    squadraConquistaTemp = squadraConquistaTemp.filter(n => n !== nome);
+    renderSquadraConquistaTemp();
+};
+
+window.registraConquista = async () => {
+    const zona = document.getElementById('conquista-zona').value.trim();
+    if(squadraConquistaTemp.length === 0 || !zona) return vampireToast("Inserire squadra e zona.", "error");
+
+    const now = new Date();
+    await addDoc(collection(db, "conquiste"), {
+        squadra: squadraConquistaTemp,
+        zona: zona,
+        timestamp: Date.now(),
+        dataStr: now.toLocaleDateString('it-IT') + " " + now.toLocaleTimeString('it-IT')
+    });
+
+    squadraConquistaTemp = [];
+    document.getElementById('conquista-zona').value = "";
+    renderSquadraConquistaTemp();
+    vampireToast("Territorio rivendicato con successo.", "success");
+};
+
+function renderConquiste() {
+    const tbody = document.getElementById('lista-conquiste');
+    if(!tbody) return;
+    tbody.innerHTML = conquisteDati.sort((a,b) => b.timestamp - a.timestamp).map(c => `
+        <tr>
+            <td style="font-size:0.7rem;">${c.dataStr}</td>
+            <td>${c.squadra.join(', ')}</td>
+            <td style="color: var(--gold-accent);">${c.zona}</td>
+        </tr>`).join('');
+}
+
+// --- LOGICA ADMIN (GESTIONE) ---
+window.checkAccess = () => {
+    const passInput = document.getElementById('admin-pass').value;
+    if(!passInput) {
+        return vampireToast("Inserire la password gestore.", "error");
+    }
+    if(passInput === PASSWORD_GDR) {
+        document.getElementById('login-container-gestione').style.display = 'none';
+        document.getElementById('admin-content').style.display = 'block';
+        
+        window.renderAdminMorsi(); 
+        window.renderAdminTable(); 
+        window.renderArchivioGestione(); 
+        window.renderAdminLogs(); 
+        window.renderAdminSaldoLogs();
+        window.renderAdminDungeon(); 
+        window.renderAdminConquiste();
+
+        renderVampiriLists(); 
+        renderDinamici(); 
+        aggiornaStats(); 
+        
+        vampireToast("Accesso Gestore garantito.", "success");
+    } else { 
+        vampireToast("Accesso negato. Password errata.", "error"); 
+    }
+};
+
+// --- GESTIONE ADMIN SPECIFICA PER DUNGEON E CONQUISTE ---
+window.renderAdminDungeon = () => {
+    const container = document.getElementById('admin-dungeon-body');
+    if(!container) return;
+    container.innerHTML = dungeonDati.sort((a,b) => b.inizio - a.inizio).map(d => `
+        <tr>
+            <td style="font-size:0.65rem;">${d.dataStr}<br>${d.oraStr || ''}</td>
+            <td>${d.squadra.join(', ')}</td>
+            <td>Liv ${d.livello}</td>
+            <td><button class="btn-delete" onclick="window.adminDeleteDungeon('${d.id}')">X</button></td>
+        </tr>`).join('');
+};
+
+window.adminDeleteDungeon = async (id) => {
+    const res = await Swal.fire({ title: 'Eliminare Dungeon?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
+    if(res.isConfirmed) {
+        await deleteDoc(doc(db, "dungeon", id));
+        vampireToast("Dungeon eliminato.", "success");
+    }
+};
+
+window.renderAdminConquiste = () => {
+    const container = document.getElementById('admin-conquiste-body');
+    if(!container) return;
+    container.innerHTML = conquisteDati.sort((a,b) => b.timestamp - a.timestamp).map(c => `
+        <tr>
+            <td style="font-size:0.65rem;">${c.dataStr}</td>
+            <td>${c.squadra.join(', ')}</td>
+            <td>${c.zona}</td>
+            <td><button class="btn-delete" onclick="window.adminDeleteConquista('${c.id}')">X</button></td>
+        </tr>`).join('');
+};
+
+window.adminDeleteConquista = async (id) => {
+    const res = await Swal.fire({ title: 'Eliminare Conquista?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
+    if(res.isConfirmed) {
+        await deleteDoc(doc(db, "conquiste", id));
+        vampireToast("Conquista eliminata.", "success");
+    }
+};
+
 // --- LOGICA ADMIN MORSI ---
 window.renderAdminMorsi = () => {
     const tbody = document.getElementById('admin-morsi-table-body');
@@ -327,20 +517,18 @@ function renderClassifiche() {
     const currentWeek = getWeekYearKey(new Date());
     const mapSett = {};
     
-    // Filtro Settimanale: accumulo solo la quota 'dinastia'
     vendite.filter(v => v.settimanaEtichetta === currentWeek).forEach(v => {
         if (!mapSett[v.nome]) mapSett[v.nome] = { carbonio: 0, crediti: 0 };
         mapSett[v.nome].carbonio += v.qty; 
-        mapSett[v.nome].crediti += v.dinastia; // <--- MODIFICATO: da v.totale a v.dinastia
+        mapSett[v.nome].crediti += v.dinastia;
     });
     const rankSett = Object.entries(mapSett).sort((a,b) => b[1].carbonio - a[1].carbonio);
 
     const mapSempre = {};
-    // Filtro Storico: accumulo solo la quota 'dinastia'
     vendite.forEach(v => {
         if (!mapSempre[v.nome]) mapSempre[v.nome] = { carbonio: 0, crediti: 0 };
         mapSempre[v.nome].carbonio += v.qty; 
-        mapSempre[v.nome].crediti += v.dinastia; // <--- MODIFICATO: da v.totale a v.dinastia
+        mapSempre[v.nome].crediti += v.dinastia;
     });
     const rankSempre = Object.entries(mapSempre).sort((a,b) => b[1].crediti - a[1].crediti);
 
@@ -489,7 +677,7 @@ window.renderVendite = () => {
         </tr>`).join('');
 };
 
-// --- LOGICA INVENTARIO VISIVO (RIPRISTINATA INTEGRALMENTE) ---
+// --- LOGICA INVENTARIO VISIVO ---
 window.renderInventario = () => {
     const searchTerm = document.getElementById('search-inventario').value.toLowerCase();
     [1, 2, 3].forEach(n => {
@@ -554,23 +742,7 @@ window.renderLogs = () => {
         </div>`).join('');
 };
 
-// --- LOGICA ADMIN (GESTIONE) ---
-window.checkAccess = () => {
-    const passInput = document.getElementById('admin-pass').value;
-    if(!passInput) {
-        return vampireToast("Inserire la password gestore.", "error");
-    }
-    if(passInput === PASSWORD_GDR) {
-        document.getElementById('login-container-gestione').style.display = 'none';
-        document.getElementById('admin-content').style.display = 'block';
-        window.renderAdminMorsi(); window.renderAdminTable(); window.renderArchivioGestione(); window.renderAdminLogs(); window.renderAdminSaldoLogs();
-        renderVampiriLists(); renderDinamici(); aggiornaStats(); 
-        vampireToast("Accesso Gestore garantito.", "success");
-    } else { 
-        vampireToast("Accesso negato. Password errata.", "error"); 
-    }
-};
-
+// --- ALTRE FUNZIONI ADMIN ---
 window.adminUpdateSaldo = async () => {
     const v = parseInt(document.getElementById('admin-saldo-val').value);
     await setDoc(doc(db, "config", "saldo"), { valore: v }, { merge: true });
@@ -718,7 +890,7 @@ window.popolaSelectOggetti = () => {
     if(select) select.innerHTML = inventarioDati.sort((a,b) => a.id.localeCompare(b.id)).map(i => `<option value="${i.id}">${i.id}</option>`).join('');
 };
 
-// --- TIME UTILS (FIXED SETTIMANA) ---
+// --- TIME UTILS ---
 function getWeekYearKey(date) {
     const d = new Date(date.getTime());
     d.setHours(0, 0, 0, 0);
@@ -762,16 +934,8 @@ let logoClickCount = 0;
 let morsiUnlocked = false;
 
 window.vampireSecretUnlock = async () => {
-    // Se è già sbloccato, non fare nulla
     if (morsiUnlocked) return;
-
     logoClickCount++;
-
-    // Opzionale: un piccolo feedback visivo (vibrazione del logo o toast ogni 3 click)
-    if (logoClickCount % 3 === 0 && logoClickCount < 10) {
-        console.log(`Il logo sussurra... (${logoClickCount}/10)`);
-    }
-
     if (logoClickCount >= 10) {
         const { value: password } = await Swal.fire({
             title: 'Santuario del Sangue',
@@ -788,15 +952,11 @@ window.vampireSecretUnlock = async () => {
             morsiUnlocked = true;
             document.getElementById('nav-morsi').style.display = 'block';
             vampireToast("Registro dei Morsi rivelato.", "success");
-            
-            // Effetto visivo di sblocco sul logo
             document.getElementById('main-logo').style.filter = "drop-shadow(0 0 15px #ff0000)";
-            
-            // Porta l'utente direttamente alla sezione
             window.showSection('morsi');
         } else {
-            logoClickCount = 0; // Reset dei click se sbaglia pass
-            vampireToast("Parola d'ordine errata. L'oscurità ti respinge.", "error");
+            logoClickCount = 0;
+            vampireToast("Parola d'ordine errata.", "error");
         }
     }
 };
@@ -826,6 +986,18 @@ onSnapshot(collection(db, "morsi"), (snapshot) => {
     morsi = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
     window.renderMorsi(); 
     if (document.getElementById('admin-content').style.display === 'block') window.renderAdminMorsi();
+});
+
+onSnapshot(collection(db, "dungeon"), (snapshot) => { 
+    dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+    updateDungeonTimers();
+    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminDungeon();
+});
+
+onSnapshot(collection(db, "conquiste"), (snapshot) => { 
+    conquisteDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+    renderConquiste();
+    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminConquiste();
 });
 
 onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
