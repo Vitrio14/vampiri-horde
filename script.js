@@ -317,6 +317,7 @@ window.rimuoviMembroSquadra = (nome) => {
 
 window.avviaDungeon = async () => {
     const livello = document.getElementById('dungeon-livello').value;
+    const esito = document.getElementById('dungeon-esito').value;
     if(squadraDungeonTemp.length === 0) return vampireToast("Seleziona almeno un membro.", "error");
 
     const now = new Date();
@@ -324,6 +325,7 @@ window.avviaDungeon = async () => {
     await addDoc(collection(db, "dungeon"), {
         squadra: squadraDungeonTemp,
         livello: livello,
+        esito: esito,
         inizio: oraInizio,
         scadenza: oraInizio + (30 * 60 * 1000),
         dataStr: now.toLocaleDateString('it-IT'),
@@ -332,34 +334,62 @@ window.avviaDungeon = async () => {
 
     squadraDungeonTemp = [];
     renderSquadraTemp();
-    vampireToast("Incursione iniziata. Il tempo scorre...", "success");
+    vampireToast("Incursione registrata con successo.", "success");
 };
+
+window.renderDungeon = () => {
+    updateDungeonTimers();
+    aggiornaStatsDungeon();
+};
+
+function aggiornaStatsDungeon() {
+    const total = dungeonDati.length;
+    const success = dungeonDati.filter(d => d.esito === 'successo').length;
+    const fail = dungeonDati.filter(d => d.esito === 'fallimento').length;
+
+    if(document.getElementById('stat-dungeon-tot')) document.getElementById('stat-dungeon-tot').innerText = total;
+    if(document.getElementById('stat-dungeon-vittorie')) document.getElementById('stat-dungeon-vittorie').innerText = success;
+    if(document.getElementById('stat-dungeon-sconfitte')) document.getElementById('stat-dungeon-sconfitte').innerText = fail;
+
+    // Anche per Admin
+    if(document.getElementById('admin-stat-dungeon-tot')) document.getElementById('admin-stat-dungeon-tot').innerText = total;
+    if(document.getElementById('admin-stat-dungeon-vittorie')) document.getElementById('admin-stat-dungeon-vittorie').innerText = success;
+    if(document.getElementById('admin-stat-dungeon-sconfitte')) document.getElementById('admin-stat-dungeon-sconfitte').innerText = fail;
+}
 
 function updateDungeonTimers() {
     const tbody = document.getElementById('lista-dungeon');
     if(!tbody) return;
+    const searchTerm = document.getElementById('search-dungeon').value.toLowerCase();
 
-    tbody.innerHTML = dungeonDati.sort((a,b) => b.inizio - a.inizio).map(d => {
-        const oraAttuale = Date.now();
-        const diff = d.scadenza - oraAttuale;
-        let timerHTML = "";
+    tbody.innerHTML = dungeonDati
+        .filter(d => (d.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (d.livello || "").toString().includes(searchTerm))
+        .sort((a,b) => b.inizio - a.inizio)
+        .map(d => {
+            const oraAttuale = Date.now();
+            const diff = (d.scadenza || 0) - oraAttuale;
+            let timerHTML = "";
 
-        if(diff > 0) {
-            const min = Math.floor(diff / 60000);
-            const sec = Math.floor((diff % 60000) / 1000);
-            timerHTML = `<span class="status-badge status-attivo">${min}m ${sec}s</span>`;
-        } else {
-            timerHTML = `<span class="status-badge status-passato">Scaduto</span>`;
-        }
+            if(diff > 0) {
+                const min = Math.floor(diff / 60000);
+                const sec = Math.floor((diff % 60000) / 1000);
+                timerHTML = `<span class="status-badge status-attivo">${min}m ${sec}s</span>`;
+            } else {
+                timerHTML = `<span class="status-badge status-passato">Concluso</span>`;
+            }
 
-        return `
-            <tr>
-                <td><span class="ts-label">${d.dataStr || ''}</span> <strong>${d.squadra.join(', ')}</strong></td>
-                <td>Livello ${d.livello}</td>
-                <td>${timerHTML}</td>
-                <td style="font-size:0.7rem; opacity:0.6;">${d.oraStr || new Date(d.inizio).toLocaleTimeString()}</td>
-            </tr>`;
-    }).join('');
+            const esitoText = d.esito ? d.esito.toUpperCase() : "N/D";
+            const esitoClass = d.esito === 'successo' ? 'status-attivo' : 'status-passato';
+
+            return `
+                <tr>
+                    <td><span class="ts-label">${d.dataStr || ''}</span> <strong>${(d.squadra || []).join(', ')}</strong></td>
+                    <td>Livello ${d.livello || '?'}</td>
+                    <td><span class="status-badge ${esitoClass}">${esitoText}</span></td>
+                    <td>${timerHTML}</td>
+                    <td style="font-size:0.7rem; opacity:0.6;">${d.oraStr || new Date(d.inizio || 0).toLocaleTimeString()}</td>
+                </tr>`;
+        }).join('');
 }
 
 setInterval(updateDungeonTimers, 1000);
@@ -389,12 +419,14 @@ window.rimuoviMembroConquista = (nome) => {
 
 window.registraConquista = async () => {
     const zona = document.getElementById('conquista-zona').value.trim();
+    const esito = document.getElementById('conquista-esito').value;
     if(squadraConquistaTemp.length === 0 || !zona) return vampireToast("Inserire squadra e zona.", "error");
 
     const now = new Date();
     await addDoc(collection(db, "conquiste"), {
         squadra: squadraConquistaTemp,
         zona: zona,
+        esito: esito,
         timestamp: Date.now(),
         dataStr: now.toLocaleDateString('it-IT') + " " + now.toLocaleTimeString('it-IT')
     });
@@ -402,18 +434,45 @@ window.registraConquista = async () => {
     squadraConquistaTemp = [];
     document.getElementById('conquista-zona').value = "";
     renderSquadraConquistaTemp();
-    vampireToast("Territorio rivendicato con successo.", "success");
+    vampireToast("Operazione di conquista registrata.", "success");
 };
 
-function renderConquiste() {
+window.renderConquiste = () => {
     const tbody = document.getElementById('lista-conquiste');
     if(!tbody) return;
-    tbody.innerHTML = conquisteDati.sort((a,b) => b.timestamp - a.timestamp).map(c => `
-        <tr>
-            <td style="font-size:0.7rem;">${c.dataStr}</td>
-            <td>${c.squadra.join(', ')}</td>
-            <td style="color: var(--gold-accent);">${c.zona}</td>
-        </tr>`).join('');
+    const searchTerm = document.getElementById('search-conquiste').value.toLowerCase();
+
+    tbody.innerHTML = conquisteDati
+        .filter(c => (c.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (c.zona || "").toLowerCase().includes(searchTerm))
+        .sort((a,b) => b.timestamp - a.timestamp)
+        .map(c => {
+            const esitoText = c.esito ? c.esito.toUpperCase() : "N/D";
+            const esitoClass = c.esito === 'successo' ? 'status-attivo' : 'status-passato';
+            return `
+            <tr>
+                <td style="font-size:0.7rem;">${c.dataStr || ''}</td>
+                <td>${(c.squadra || []).join(', ')}</td>
+                <td style="color: var(--gold-accent);">${c.zona || ''}</td>
+                <td><span class="status-badge ${esitoClass}">${esitoText}</span></td>
+            </tr>`;
+        }).join('');
+
+    aggiornaStatsConquiste();
+};
+
+function aggiornaStatsConquiste() {
+    const total = conquisteDati.length;
+    const success = conquisteDati.filter(c => c.esito === 'successo').length;
+    const fail = conquisteDati.filter(c => c.esito === 'fallimento').length;
+
+    if(document.getElementById('stat-conquista-tot')) document.getElementById('stat-conquista-tot').innerText = total;
+    if(document.getElementById('stat-conquista-vittorie')) document.getElementById('stat-conquista-vittorie').innerText = success;
+    if(document.getElementById('stat-conquista-sconfitte')) document.getElementById('stat-conquista-sconfitte').innerText = fail;
+
+    // Anche per Admin
+    if(document.getElementById('admin-stat-conquista-tot')) document.getElementById('admin-stat-conquista-tot').innerText = total;
+    if(document.getElementById('admin-stat-conquista-vittorie')) document.getElementById('admin-stat-conquista-vittorie').innerText = success;
+    if(document.getElementById('admin-stat-conquista-sconfitte')) document.getElementById('admin-stat-conquista-sconfitte').innerText = fail;
 }
 
 // --- LOGICA ADMIN (GESTIONE) ---
@@ -437,6 +496,8 @@ window.checkAccess = () => {
         renderVampiriLists(); 
         renderDinamici(); 
         aggiornaStats(); 
+        aggiornaStatsDungeon();
+        aggiornaStatsConquiste();
         
         vampireToast("Accesso Gestore garantito.", "success");
     } else { 
@@ -444,17 +505,25 @@ window.checkAccess = () => {
     }
 };
 
-// --- GESTIONE ADMIN SPECIFICA PER DUNGEON E CONQUISTE ---
 window.renderAdminDungeon = () => {
     const container = document.getElementById('admin-dungeon-body');
     if(!container) return;
-    container.innerHTML = dungeonDati.sort((a,b) => b.inizio - a.inizio).map(d => `
-        <tr>
-            <td style="font-size:0.65rem;">${d.dataStr}<br>${d.oraStr || ''}</td>
-            <td>${d.squadra.join(', ')}</td>
-            <td>Liv ${d.livello}</td>
-            <td><button class="btn-delete" onclick="window.adminDeleteDungeon('${d.id}')">X</button></td>
-        </tr>`).join('');
+    const searchTerm = document.getElementById('search-admin-dungeon').value.toLowerCase();
+
+    container.innerHTML = dungeonDati
+        .filter(d => (d.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (d.livello || "").toString().includes(searchTerm))
+        .sort((a,b) => b.inizio - a.inizio)
+        .map(d => {
+            const esitoText = d.esito ? d.esito.toUpperCase() : "N/D";
+            return `
+            <tr>
+                <td style="font-size:0.65rem;">${d.dataStr || ''}<br>${d.oraStr || ''}</td>
+                <td>${(d.squadra || []).join(', ')}</td>
+                <td>Liv ${d.livello || ''}</td>
+                <td><small>${esitoText}</small></td>
+                <td><button class="btn-delete" onclick="window.adminDeleteDungeon('${d.id}')">X</button></td>
+            </tr>`;
+        }).join('');
 };
 
 window.adminDeleteDungeon = async (id) => {
@@ -468,13 +537,22 @@ window.adminDeleteDungeon = async (id) => {
 window.renderAdminConquiste = () => {
     const container = document.getElementById('admin-conquiste-body');
     if(!container) return;
-    container.innerHTML = conquisteDati.sort((a,b) => b.timestamp - a.timestamp).map(c => `
-        <tr>
-            <td style="font-size:0.65rem;">${c.dataStr}</td>
-            <td>${c.squadra.join(', ')}</td>
-            <td>${c.zona}</td>
-            <td><button class="btn-delete" onclick="window.adminDeleteConquista('${c.id}')">X</button></td>
-        </tr>`).join('');
+    const searchTerm = document.getElementById('search-admin-conquiste').value.toLowerCase();
+
+    container.innerHTML = conquisteDati
+        .filter(c => (c.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (c.zona || "").toLowerCase().includes(searchTerm))
+        .sort((a,b) => b.timestamp - a.timestamp)
+        .map(c => {
+            const esitoText = c.esito ? c.esito.toUpperCase() : "N/D";
+            return `
+            <tr>
+                <td style="font-size:0.65rem;">${c.dataStr || ''}</td>
+                <td>${(c.squadra || []).join(', ')}</td>
+                <td>${c.zona || ''}</td>
+                <td><small>${esitoText}</small></td>
+                <td><button class="btn-delete" onclick="window.adminDeleteConquista('${c.id}')">X</button></td>
+            </tr>`;
+        }).join('');
 };
 
 window.adminDeleteConquista = async (id) => {
@@ -485,23 +563,22 @@ window.adminDeleteConquista = async (id) => {
     }
 };
 
-// --- LOGICA ADMIN MORSI ---
 window.renderAdminMorsi = () => {
     const tbody = document.getElementById('admin-morsi-table-body');
     if (!tbody) return;
     const searchTerm = document.getElementById('search-admin-morsi').value.toLowerCase();
     
     tbody.innerHTML = morsi
-        .filter(m => m.vampiro.toLowerCase().includes(searchTerm) || m.umano.toLowerCase().includes(searchTerm))
+        .filter(m => (m.vampiro || "").toLowerCase().includes(searchTerm) || (m.umano || "").toLowerCase().includes(searchTerm))
         .sort((a, b) => b.timestamp - a.timestamp)
         .map(m => {
             const tVittima = m.tipoVittima || 'umano'; 
             return `
             <tr>
-                <td style="font-size:0.65rem;">${m.dataStr}<br>${m.ora}</td>
-                <td>${m.vampiro}</td>
-                <td><small>[${tVittima.toUpperCase()}]</small> ${m.umano}</td>
-                <td style="font-size:0.6rem; opacity:0.6;">${getWeekRangeLabel(m.settimanaEtichetta)}</td>
+                <td style="font-size:0.65rem;">${m.dataStr || ''}<br>${m.ora || ''}</td>
+                <td>${m.vampiro || ''}</td>
+                <td><small>[${tVittima.toUpperCase()}]</small> ${m.umano || ''}</td>
+                <td style="font-size:0.6rem; opacity:0.6;">${getWeekRangeLabel(m.settimanaEtichetta || "")}</td>
                 <td><button class="btn-delete" onclick="window.adminDeleteMorso('${m.id}')">X</button></td>
             </tr>`;
         }).join('');
@@ -519,16 +596,16 @@ function renderClassifiche() {
     
     vendite.filter(v => v.settimanaEtichetta === currentWeek).forEach(v => {
         if (!mapSett[v.nome]) mapSett[v.nome] = { carbonio: 0, crediti: 0 };
-        mapSett[v.nome].carbonio += v.qty; 
-        mapSett[v.nome].crediti += v.dinastia;
+        mapSett[v.nome].carbonio += (v.qty || 0); 
+        mapSett[v.nome].crediti += (v.dinastia || 0);
     });
     const rankSett = Object.entries(mapSett).sort((a,b) => b[1].carbonio - a[1].carbonio);
 
     const mapSempre = {};
     vendite.forEach(v => {
         if (!mapSempre[v.nome]) mapSempre[v.nome] = { carbonio: 0, crediti: 0 };
-        mapSempre[v.nome].carbonio += v.qty; 
-        mapSempre[v.nome].crediti += v.dinastia;
+        mapSempre[v.nome].carbonio += (v.qty || 0); 
+        mapSempre[v.nome].crediti += (v.dinastia || 0);
     });
     const rankSempre = Object.entries(mapSempre).sort((a,b) => b[1].crediti - a[1].crediti);
 
@@ -548,7 +625,6 @@ function renderClassifiche() {
     document.getElementById('top-sempre-box').innerHTML = generateHtml(rankSempre);
 }
 
-// --- LOGICA SALDO ---
 window.movimentoSaldo = async () => {
     const nome = document.getElementById('saldo-nome').value;
     const importo = parseInt(document.getElementById('saldo-importo').value);
@@ -571,23 +647,22 @@ window.renderSaldoLogs = () => {
     const box = document.getElementById('saldo-logs-box');
     if(!box) return;
     const searchTerm = document.getElementById('search-saldo-logs').value.toLowerCase();
-    box.innerHTML = saldoLogs.filter(l => l.utente.toLowerCase().includes(searchTerm) || l.motivo.toLowerCase().includes(searchTerm))
+    box.innerHTML = saldoLogs.filter(l => (l.utente || "").toLowerCase().includes(searchTerm) || (l.motivo || "").toLowerCase().includes(searchTerm))
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span style="color: ${l.tipo === 'preleva' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo}</span> <span style="color: var(--gold-dim);">${fmt(l.qty)}</span> cr</span>
-                <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
+                <span><strong>${l.utente || ''}</strong> <span style="color: ${l.tipo === 'preleva' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo || ''}</span> <span style="color: var(--gold-dim);">${fmt(l.qty)}</span> cr</span>
+                <span class="log-time">${l.dataStr || ''} ${l.ora || ''}</span>
             </div>
-            <div class="log-causale">Motivo: ${l.motivo}</div>
+            <div class="log-causale">Motivo: ${l.motivo || ''}</div>
         </div>`).join('');
 };
 
-// --- LOGICA CALCOLO (FILTRATA) ---
 function popolaFiltroSettimane() {
     const filter = document.getElementById('calc-period-filter');
     if(!filter) return;
     const valCorrente = filter.value;
-    const settimaneUniche = [...new Set(vendite.map(v => v.settimanaEtichetta))].sort().reverse();
+    const settimaneUniche = [...new Set(vendite.map(v => v.settimanaEtichetta))].filter(Boolean).sort().reverse();
     
     let options = `<option value="current">Settimana Corrente</option><option value="all">Totale Storico</option>`;
     settimaneUniche.forEach(s => {
@@ -620,8 +695,8 @@ window.eseguiCalcolo = () => {
         return vampireToast("Nessun record trovato per i parametri scelti.", "error"); 
     }
     
-    const totQty = filtrati.reduce((a, b) => a + b.qty, 0);
-    const totCr = filtrati.reduce((a, b) => a + b.totale, 0);
+    const totQty = filtrati.reduce((a, b) => a + (b.qty || 0), 0);
+    const totCr = filtrati.reduce((a, b) => a + (b.totale || 0), 0);
     
     document.getElementById('calc-res-nome').innerText = nomeInput.toUpperCase();
     document.getElementById('calc-res-qty').innerText = fmt(totQty);
@@ -632,8 +707,8 @@ window.eseguiCalcolo = () => {
     
     const listaHtml = filtrati.sort((a,b) => b.timestamp - a.timestamp).map(v => `
         <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
-            <span>${v.dataStr} (${v.ora})</span>
-            <span style="color: var(--gold-dim);">${v.qty}x - ${fmt(v.totale)} cr</span>
+            <span>${v.dataStr || ''} (${v.ora || ''})</span>
+            <span style="color: var(--gold-dim);">${v.qty || 0}x - ${fmt(v.totale || 0)} cr</span>
         </div>
     `).join('');
     document.getElementById('calc-res-lista-dettaglio').innerHTML = "<strong>Dettaglio Vendite:</strong>" + listaHtml;
@@ -641,7 +716,6 @@ window.eseguiCalcolo = () => {
     vampireToast("Resoconto generato con successo.", "success");
 };
 
-// --- LOGICA VENDITE ---
 window.registraVendita = async () => {
     const nome = document.getElementById('vamp-nome').value;
     const qty = parseInt(document.getElementById('vamp-qty').value);
@@ -664,12 +738,12 @@ window.renderVendite = () => {
     if(!lista) return;
     const searchTerm = document.getElementById('search-vendite').value.toLowerCase();
     const key = getWeekYearKey(new Date());
-    lista.innerHTML = vendite.filter(v => v.settimanaEtichetta === key && (v.nome.toLowerCase().includes(searchTerm) || (v.note && v.note.toLowerCase().includes(searchTerm))))
+    lista.innerHTML = vendite.filter(v => v.settimanaEtichetta === key && ((v.nome || "").toLowerCase().includes(searchTerm) || (v.note && v.note.toLowerCase().includes(searchTerm))))
         .sort((a,b) => b.timestamp - a.timestamp)
         .map(v => `
         <tr>
             <td><span class="ts-label">${v.dataStr || ''}</span><strong>${v.ora || ''}</strong></td>
-            <td>${v.nome}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}x</td><td style="color: var(--gold-dim);">${fmt(v.totale)}</td>
+            <td>${v.nome || ''}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}x</td><td style="color: var(--gold-dim);">${fmt(v.totale)}</td>
             <td style="color:var(--success-green)">${fmt(v.propria)}</td>
             <td style="color:var(--gold-accent)">${fmt(v.dinastia)}</td>
             <td style="font-size: 0.7rem; opacity: 0.6;">${v.note || '-'}</td>
@@ -677,7 +751,6 @@ window.renderVendite = () => {
         </tr>`).join('');
 };
 
-// --- LOGICA INVENTARIO VISIVO ---
 window.renderInventario = () => {
     const searchTerm = document.getElementById('search-inventario').value.toLowerCase();
     [1, 2, 3].forEach(n => {
@@ -731,18 +804,17 @@ window.renderLogs = () => {
     const logElement = document.getElementById('inv-logs');
     if(!logElement) return;
     const searchTerm = document.getElementById('search-logs').value.toLowerCase();
-    logElement.innerHTML = logs.filter(l => l.utente.toLowerCase().includes(searchTerm) || l.item.toLowerCase().includes(searchTerm) || (l.motivo && l.motivo.toLowerCase().includes(searchTerm)))
+    logElement.innerHTML = logs.filter(l => (l.utente || "").toLowerCase().includes(searchTerm) || (l.item || "").toLowerCase().includes(searchTerm) || (l.motivo && l.motivo.toLowerCase().includes(searchTerm)))
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span style="color: ${l.tipo === 'prendi' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo}</span> <span style="color: var(--gold-dim); font-weight: bold;">${fmt(l.qty)}x</span> ${l.item}</span>
-                <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
+                <span><strong>${l.utente || ''}</strong> <span style="color: ${l.tipo === 'prendi' ? 'var(--withdraw-red)' : 'var(--success-green)'}">${l.tipo || ''}</span> <span style="color: var(--gold-dim); font-weight: bold;">${fmt(l.qty)}x</span> ${l.item || ''}</span>
+                <span class="log-time">${l.dataStr || ''} ${l.ora || ''}</span>
             </div>
             <div class="log-causale">Motivo: ${l.motivo || 'N/D'}</div>
         </div>`).join('');
 };
 
-// --- ALTRE FUNZIONI ADMIN ---
 window.adminUpdateSaldo = async () => {
     const v = parseInt(document.getElementById('admin-saldo-val').value);
     await setDoc(doc(db, "config", "saldo"), { valore: v }, { merge: true });
@@ -814,13 +886,13 @@ window.renderAdminLogs = () => {
     const logBox = document.getElementById('admin-logs-box');
     if(!logBox) return;
     const searchTerm = document.getElementById('search-admin-logs').value.toLowerCase();
-    logBox.innerHTML = logs.filter(l => l.utente.toLowerCase().includes(searchTerm) || l.item.toLowerCase().includes(searchTerm))
+    logBox.innerHTML = logs.filter(l => (l.utente || "").toLowerCase().includes(searchTerm) || (l.item || "").toLowerCase().includes(searchTerm))
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span>${l.tipo}</span> <span style="color: var(--gold-dim);">${fmt(l.qty)}</span>x ${l.item}</span>
+                <span><strong>${l.utente || ''}</strong> <span>${l.tipo || ''}</span> <span style="color: var(--gold-dim);">${fmt(l.qty)}</span>x ${l.item || ''}</span>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
+                    <span class="log-time">${l.dataStr || ''} ${l.ora || ''}</span>
                     <button class="btn-delete" onclick="window.adminDeleteLog('${l.id}')">ELIMINA</button>
                 </div>
             </div>
@@ -832,17 +904,17 @@ window.renderAdminSaldoLogs = () => {
     const logBox = document.getElementById('admin-saldo-logs-box');
     if(!logBox) return;
     const searchTerm = document.getElementById('search-admin-saldo-logs').value.toLowerCase();
-    logBox.innerHTML = saldoLogs.filter(l => l.utente.toLowerCase().includes(searchTerm) || l.motivo.toLowerCase().includes(searchTerm))
+    logBox.innerHTML = saldoLogs.filter(l => (l.utente || "").toLowerCase().includes(searchTerm) || (l.motivo || "").toLowerCase().includes(searchTerm))
         .map(l => `
         <div class="log-entry">
             <div class="log-main">
-                <span><strong>${l.utente}</strong> <span>${l.tipo}</span> <span style="color: var(--gold-dim); font-weight: bold;">${fmt(l.qty)}</span> cr</span>
+                <span><strong>${l.utente || ''}</strong> <span>${l.tipo || ''}</span> <span style="color: var(--gold-dim); font-weight: bold;">${fmt(l.qty)}</span> cr</span>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span class="log-time">${l.dataStr || ''} ${l.ora}</span>
+                    <span class="log-time">${l.dataStr || ''} ${l.ora || ''}</span>
                     <button class="btn-delete" onclick="window.adminDeleteSaldoLog('${l.id}')">X</button>
                 </div>
             </div>
-            <div class="log-causale">${l.motivo}</div>
+            <div class="log-causale">${l.motivo || ''}</div>
         </div>`).join('');
 };
 
@@ -853,16 +925,16 @@ window.renderArchivioGestione = () => {
     const gruppi = {};
     vendite.forEach(v => { if(!gruppi[v.settimanaEtichetta]) gruppi[v.settimanaEtichetta] = []; gruppi[v.settimanaEtichetta].push(v); });
     container.innerHTML = Object.keys(gruppi).sort().reverse().map(key => {
-        const filtered = gruppi[key].filter(v => v.nome.toLowerCase().includes(searchTerm) || (v.note && v.note.toLowerCase().includes(searchTerm))).sort((a,b) => b.timestamp - a.timestamp);
+        const filtered = gruppi[key].filter(v => (v.nome || "").toLowerCase().includes(searchTerm) || (v.note && v.note.toLowerCase().includes(searchTerm))).sort((a,b) => b.timestamp - a.timestamp);
         if(filtered.length === 0 && searchTerm !== "") return "";
         const range = getWeekRangeLabel(key);
-        const weekTotalQty = filtered.reduce((sum, v) => sum + v.qty, 0);
-        const weekTotalDinastia = filtered.reduce((sum, v) => sum + v.dinastia, 0);
+        const weekTotalQty = filtered.reduce((sum, v) => sum + (v.qty || 0), 0);
+        const weekTotalDinastia = filtered.reduce((sum, v) => sum + (v.dinastia || 0), 0);
         
         return `<div class="week-archive-block">
             <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: <span style="color: var(--gold-dim);">${fmt(weekTotalQty)}x</span> | Dinastia: <span style="color: var(--gold-dim);">${fmt(weekTotalDinastia)} cr</span> | Ekaton (50%): <span style="color: var(--gold-dim);">${fmt(Math.floor(weekTotalDinastia * 0.5))} cr</span></div>
             <div style="overflow-x:auto;"><table><thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Qty</th><th>Propria</th><th>Dinastia</th><th>Note</th><th>Azione</th></tr></thead>
-            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr}<br>${v.ora}</td><td>${v.nome}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
+            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr || ''}<br>${v.ora || ''}</td><td>${v.nome || ''}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
     }).join('');
 };
 
@@ -901,6 +973,7 @@ function getWeekYearKey(date) {
 }
 
 function getWeekRangeLabel(weekKey) {
+    if(!weekKey) return "N/D";
     const [year, week] = weekKey.split('-W');
     const simple = new Date(year, 0, 1 + (week - 1) * 7);
     const ISOweekStart = new Date(simple); 
@@ -913,9 +986,9 @@ function getWeekRangeLabel(weekKey) {
 function aggiornaStats() {
     const currentWeekKey = getWeekYearKey(new Date());
     const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
-    const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + curr.dinastia, 0);
-    const totaleQtySett = correnti.reduce((acc, curr) => acc + curr.qty, 0);
-    const dinastiaStorico = vendite.reduce((acc, curr) => acc + curr.dinastia, 0);
+    const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + (curr.dinastia || 0), 0);
+    const totaleQtySett = correnti.reduce((acc, curr) => acc + (curr.qty || 0), 0);
+    const dinastiaStorico = vendite.reduce((acc, curr) => acc + (curr.dinastia || 0), 0);
     const ekatonStorico = dinastiaStorico * 0.5;
     
     if(document.getElementById('tot-dinastia-sett')) document.getElementById('tot-dinastia-sett').innerText = fmt(totaleDinastiaSettimana) + " cr";
@@ -923,7 +996,7 @@ function aggiornaStats() {
     if(document.getElementById('tot-qty-sett')) document.getElementById('tot-qty-sett').innerText = fmt(totaleQtySett) + "x";
     if(document.getElementById('tot-count-sett')) document.getElementById('tot-count-sett').innerText = correnti.length;
 
-    if(document.getElementById('admin-tot-qty-storico')) document.getElementById('admin-tot-qty-storico').innerText = fmt(vendite.reduce((acc, curr) => acc + curr.qty, 0)) + "x";
+    if(document.getElementById('admin-tot-qty-storico')) document.getElementById('admin-tot-qty-storico').innerText = fmt(vendite.reduce((acc, curr) => acc + (curr.qty || 0), 0)) + "x";
     if(document.getElementById('admin-tot-dinastia-storico')) document.getElementById('admin-tot-dinastia-storico').innerText = fmt(dinastiaStorico) + " cr";
     if(document.getElementById('admin-tot-ekaton-storico')) document.getElementById('admin-tot-ekaton-storico').innerText = fmt(Math.floor(ekatonStorico)) + " cr";
     if(document.getElementById('admin-tot-count-storico')) document.getElementById('admin-tot-count-storico').innerText = vendite.length;
@@ -990,13 +1063,13 @@ onSnapshot(collection(db, "morsi"), (snapshot) => {
 
 onSnapshot(collection(db, "dungeon"), (snapshot) => { 
     dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    updateDungeonTimers();
+    window.renderDungeon(); 
     if (document.getElementById('admin-content').style.display === 'block') window.renderAdminDungeon();
 });
 
 onSnapshot(collection(db, "conquiste"), (snapshot) => { 
     conquisteDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    renderConquiste();
+    window.renderConquiste(); 
     if (document.getElementById('admin-content').style.display === 'block') window.renderAdminConquiste();
 });
 
