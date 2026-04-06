@@ -17,9 +17,10 @@
 
     <div id="global-lock">
         <div class="vamp-card" style="max-width: 380px; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
-            <h2 style="border: none; text-align: center;">Accesso membro</h2>
-            <p style="font-size: 0.7rem; margin-bottom: 25px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Inserire il codice d'accesso</p>
-            <input type="password" id="global-pass" style="text-align: center; letter-spacing: 10px; font-size: 1.2rem; margin-bottom: 20px;" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter') window.unlockSite()">
+            <h2 style="border: none; text-align: center;">Accesso Dinastia</h2>
+            <p style="font-size: 0.7rem; margin-bottom: 5px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Identità: vampiri@horde.it</p>
+            <p style="font-size: 0.6rem; margin-bottom: 25px; opacity: 0.3; text-transform: uppercase;">Inserire la chiave del sangue</p>
+            <input type="password" id="global-pass" style="text-align: center; font-size: 1.1rem; margin-bottom: 20px;" placeholder="Password" onkeydown="if(event.key==='Enter') window.unlockSite()">
             <button onclick="window.unlockSite()">Entra</button>
         </div>
     </div>
@@ -41,6 +42,7 @@
             <div class="nav-link" onclick="window.showSection('gestione')">Gestione</div>
             <a href="https://postimages.org" target="_blank" class="nav-link">Foto</a>
             <a href="https://docs.google.com/document/d/1L3r3aqR_1Yce50MWRaQd5QEc9lyu1Qdr0IczYxeUiBY/edit?usp=sharing" target="_blank" class="nav-link">Manuale</a>
+            <div class="nav-link" onclick="window.logoutVampiro()" style="color: var(--withdraw-red); border-left: 1px solid #33333300; margin-left: 12px;">Esci</div>
         </div>
     </nav>
 
@@ -455,11 +457,12 @@
         </section>
 
         <section id="gestione" class="section">
-            <div id="login-container-gestione">
+            <div id="login-container-gestione" style="display: flex; justify-content: center; align-items: center; min-height: 70vh;">
                 <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
                     <h2>Accesso Gestore</h2>
+                    <p style="font-size: 0.7rem; margin-bottom: 5px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Identità: vampiri.gestore@horde.it</p>
                     <div class="form-group">
-                        <input type="password" id="admin-pass" style="text-align: center; letter-spacing: 5px; margin: 20px 0;" onkeydown="if(event.key==='Enter') window.checkAccess()" placeholder="••••">
+                        <input type="password" id="admin-pass" style="text-align: center; margin: 20px 0;" onkeydown="if(event.key==='Enter') window.checkAccess()" placeholder="Password">
                     </div>
                     <button onclick="window.checkAccess()">Entra</button>
                     

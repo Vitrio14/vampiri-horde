@@ -1,18 +1,21 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // CONFIGURAZIONE FIREBASE
 const firebaseConfig = {
-    apiKey: "AIzaSy...", 
-    authDomain: "vampiri-horde.firebaseapp.com",
-    projectId: "vampiri-horde",
-    storageBucket: "vampiri-horde.appspot.com",
-    messagingSenderId: "...",
-    appId: "..."
+  apiKey: "AIzaSyAHm6VlxgUKnzZAj26EpgS6OWf21zDZ8vw",
+  authDomain: "vampiri-horde.firebaseapp.com",
+  projectId: "vampiri-horde",
+  storageBucket: "vampiri-horde.firebasestorage.app",
+  messagingSenderId: "932023666220",
+  appId: "1:932023666220:web:5be5ea97be350173d83389",
+  measurementId: "G-YY4822S6JQ"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 // VARIABILI GLOBALI
 let vendite = [];
@@ -27,12 +30,9 @@ let listaVampiri = [];
 let comunicazioni = [];
 let documenti = [];
 
-// Variabili per gestione squadre dinamiche (UI temporanea)
 let squadraDungeonTemp = [];
 let squadraConquistaTemp = [];
 
-const PASSWORD_GLOBAL = "2026";
-const PASSWORD_GDR = "7711"; 
 const VALORE_UNITARIO = 30;
 
 // UTILS
@@ -57,31 +57,123 @@ const vampireToast = (msg, icon = 'info') => {
 };
 window.vampireToast = vampireToast;
 
-// --- LOGICA SITO (LOGIN GLOBALE) ---
-window.unlockSite = () => {
-    const passInput = document.getElementById('global-pass').value;
-    
-    if(!passInput) {
-        return vampireToast("Inserire il codice d'accesso per procedere.", "error");
-    }
+// --- GESTIONE AUTENTICAZIONE (FIREBASE AUTH) ---
 
-    if(passInput === PASSWORD_GLOBAL) {
-        document.getElementById('global-lock').style.display = 'none';
-        window.showSection('generale'); 
+// Login Globale (Vampiri)
+window.unlockSite = async () => {
+    const passInput = document.getElementById('global-pass').value;
+    const email = "vampiri@horde.it";
+    
+    if(!passInput) return vampireToast("Inserire la password per procedere.", "error");
+
+    try {
+        await signInWithEmailAndPassword(auth, email, passInput);
         vampireToast("Accesso alla Dinastia consentito.", "success");
-    } else {
-        vampireToast("Codice errato. Il sigillo resta intatto.", "error");
-        Swal.fire({ 
-            title: "Sigillo Intatto", 
-            text: "Codice errato.", 
-            icon: "error", 
-            background: '#121212', 
-            color: '#e0e0e0',
-            confirmButtonColor: '#8b0000'
-        });
+    } catch (error) {
+        vampireToast("Accesso negato. Il sigillo resta intatto.", "error");
     }
 };
 
+// Logout Globale (Tasto opzionale nella UI)
+window.logoutVampiro = async () => {
+    const res = await Swal.fire({
+        title: 'Abbandonare la sessione?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8b0000',
+        background: '#111',
+        color: '#fff'
+    });
+    if(res.isConfirmed) {
+        await signOut(auth);
+        location.reload();
+    }
+};
+
+// Login Gestore (Admin)
+window.checkAccess = async () => {
+    const passInput = document.getElementById('admin-pass').value;
+    const email = "vampiri.gestore@horde.it";
+
+    if(!passInput) return vampireToast("Inserire la password gestore.", "error");
+
+    try {
+        await signInWithEmailAndPassword(auth, email, passInput);
+        // Nascondiamo subito il login per evitare il "vuoto"
+        document.getElementById('login-container-gestione').style.display = 'none';
+        document.getElementById('admin-content').style.display = 'block';
+        vampireToast("Accesso Gestore garantito.", "success");
+    } catch (error) {
+        vampireToast("Credenziali Gestore errate.", "error");
+    }
+};
+
+// Monitoraggio dello stato di autenticazione
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        startFirestoreListeners(); // Avviamo il recupero dati
+
+        if (user.email === "vampiri.gestore@horde.it") {
+            // Logica Admin
+            document.getElementById('global-lock').style.display = 'none';
+            document.getElementById('login-container-gestione').style.display = 'none';
+            document.getElementById('admin-content').style.display = 'block';
+            
+            // Correzione: Puntiamo a 'gestione' se la sezione si chiama così nell'HTML
+            window.showSection('gestione'); 
+            refreshAdminUI();
+        } else if (user.email === "vampiri@horde.it") {
+            // Logica Utente Base
+            document.getElementById('global-lock').style.display = 'none';
+            document.getElementById('admin-content').style.display = 'none';
+            window.showSection('generale');
+        }
+    } else {
+        // Se non loggato
+        document.getElementById('global-lock').style.display = 'flex';
+        document.getElementById('admin-content').style.display = 'none';
+        const loginGest = document.getElementById('login-container-gestione');
+        if(loginGest) {
+            loginGest.style.display = 'flex'; // Usiamo flex per la centratura CSS
+            loginGest.style.justifyContent = 'center';
+            loginGest.style.alignItems = 'center';
+        }
+    }
+});
+
+function refreshAdminUI() {
+    window.renderAdminMorsi(); 
+    window.renderAdminTable(); 
+    window.renderArchivioGestione(); 
+    window.renderAdminLogs(); 
+    window.renderAdminSaldoLogs();
+    window.renderAdminDungeon(); 
+    window.renderAdminConquiste();
+    renderVampiriLists(); 
+    renderDinamici(); 
+    aggiornaStats(); 
+    aggiornaStatsDungeon();
+    aggiornaStatsConquiste();
+}
+
+window.logoutAdmin = async () => {
+    const res = await Swal.fire({
+        title: 'Chiudere la sessione?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8b0000',
+        background: '#111',
+        color: '#fff'
+    });
+    
+    if(res.isConfirmed) {
+        await signOut(auth);
+        vampireToast("Sessione chiusa correttamente.", "info");
+        setTimeout(() => { location.reload(); }, 800);
+    }
+};
+
+// --- LOGICA SEZIONI ---
 window.showSection = (id) => {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -351,7 +443,6 @@ function aggiornaStatsDungeon() {
     if(document.getElementById('stat-dungeon-vittorie')) document.getElementById('stat-dungeon-vittorie').innerText = success;
     if(document.getElementById('stat-dungeon-sconfitte')) document.getElementById('stat-dungeon-sconfitte').innerText = fail;
 
-    // Anche per Admin
     if(document.getElementById('admin-stat-dungeon-tot')) document.getElementById('admin-stat-dungeon-tot').innerText = total;
     if(document.getElementById('admin-stat-dungeon-vittorie')) document.getElementById('admin-stat-dungeon-vittorie').innerText = success;
     if(document.getElementById('admin-stat-dungeon-sconfitte')) document.getElementById('admin-stat-dungeon-sconfitte').innerText = fail;
@@ -469,41 +560,12 @@ function aggiornaStatsConquiste() {
     if(document.getElementById('stat-conquista-vittorie')) document.getElementById('stat-conquista-vittorie').innerText = success;
     if(document.getElementById('stat-conquista-sconfitte')) document.getElementById('stat-conquista-sconfitte').innerText = fail;
 
-    // Anche per Admin
     if(document.getElementById('admin-stat-conquista-tot')) document.getElementById('admin-stat-conquista-tot').innerText = total;
     if(document.getElementById('admin-stat-conquista-vittorie')) document.getElementById('admin-stat-conquista-vittorie').innerText = success;
     if(document.getElementById('admin-stat-conquista-sconfitte')) document.getElementById('admin-stat-conquista-sconfitte').innerText = fail;
 }
 
-// --- LOGICA ADMIN (GESTIONE) ---
-window.checkAccess = () => {
-    const passInput = document.getElementById('admin-pass').value;
-    if(!passInput) {
-        return vampireToast("Inserire la password gestore.", "error");
-    }
-    if(passInput === PASSWORD_GDR) {
-        document.getElementById('login-container-gestione').style.display = 'none';
-        document.getElementById('admin-content').style.display = 'block';
-        
-        window.renderAdminMorsi(); 
-        window.renderAdminTable(); 
-        window.renderArchivioGestione(); 
-        window.renderAdminLogs(); 
-        window.renderAdminSaldoLogs();
-        window.renderAdminDungeon(); 
-        window.renderAdminConquiste();
-
-        renderVampiriLists(); 
-        renderDinamici(); 
-        aggiornaStats(); 
-        aggiornaStatsDungeon();
-        aggiornaStatsConquiste();
-        
-        vampireToast("Accesso Gestore garantito.", "success");
-    } else { 
-        vampireToast("Accesso negato. Password errata.", "error"); 
-    }
-};
+// --- LOGICA ADMIN (RESA) ---
 
 window.renderAdminDungeon = () => {
     const container = document.getElementById('admin-dungeon-body');
@@ -639,7 +701,7 @@ window.movimentoSaldo = async () => {
         utente: nome, tipo: azione, qty: importo, motivo, timestamp: Date.now(), 
         dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT')
     });
-    vampireToast(`Operazione di ${azione} completata.`, "success");
+    vampireToast(`Operazione di ${action} completata.`, "success");
     document.getElementById('saldo-importo').value = ""; document.getElementById('saldo-motivo').value = "";
 };
 
@@ -938,25 +1000,6 @@ window.renderArchivioGestione = () => {
     }).join('');
 };
 
-window.logoutAdmin = async () => {
-    const res = await Swal.fire({
-        title: 'Chiudere la sessione?',
-        text: "Dovrai inserire nuovamente la password gestore.",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#8b0000',
-        background: '#111',
-        color: '#fff'
-    });
-    
-    if(res.isConfirmed) {
-        vampireToast("Sessione chiusa correttamente.", "info");
-        setTimeout(() => {
-            location.reload();
-        }, 800);
-    }
-};
-
 window.popolaSelectOggetti = () => {
     const select = document.getElementById('inv-select-item');
     if(select) select.innerHTML = inventarioDati.sort((a,b) => a.id.localeCompare(b.id)).map(i => `<option value="${i.id}">${i.id}</option>`).join('');
@@ -1034,70 +1077,81 @@ window.vampireSecretUnlock = async () => {
     }
 };
 
-// --- PROTEZIONE INTERFACCIA ---
-
-// 1. Blocca il tasto destro
-document.addEventListener('contextmenu', event => event.preventDefault());
-
-// 2. Blocca scorciatoie da tastiera comuni per ispeziona
-document.onkeydown = function(e) {
-    if (e.keyCode == 123) return false; // F12
-    if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
-    if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Ctrl+Shift+C
-    if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
-    if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U (Visualizza sorgente)
-};
-
-// 3. Debugger Loop: se aprono la console, il sito rallenta drasticamente
-setInterval(function() {
-    debugger;
-}, 100);
-
 // --- INITIALIZATION & SNAPSHOTS ---
-onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
-onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
-onSnapshot(query(collection(db, "documenti"), orderBy("timestamp", "desc")), (snap) => { documenti = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
 
-onSnapshot(collection(db, "vendite"), (snapshot) => { 
-    vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    window.renderVendite(); 
-    renderClassifiche(); 
-    aggiornaStats(); 
-    popolaFiltroSettimane();
-    if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
-});
+function startFirestoreListeners() {
+    onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
+    onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
+    onSnapshot(query(collection(db, "documenti"), orderBy("timestamp", "desc")), (snap) => { documenti = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
 
-onSnapshot(collection(db, "inventario"), (snapshot) => { 
-    inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    window.renderInventario(); 
-    window.popolaSelectOggetti(); 
-    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
-});
+    onSnapshot(collection(db, "vendite"), (snapshot) => { 
+        vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        window.renderVendite(); 
+        renderClassifiche(); 
+        aggiornaStats(); 
+        popolaFiltroSettimane();
+        if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
+    });
 
-onSnapshot(collection(db, "morsi"), (snapshot) => { 
-    morsi = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    window.renderMorsi(); 
-    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminMorsi();
-});
+    onSnapshot(collection(db, "inventario"), (snapshot) => { 
+        inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        window.renderInventario(); 
+        window.popolaSelectOggetti(); 
+        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
+    });
 
-onSnapshot(collection(db, "dungeon"), (snapshot) => { 
-    dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    window.renderDungeon(); 
-    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminDungeon();
-});
+    onSnapshot(collection(db, "morsi"), (snapshot) => { 
+        morsi = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        window.renderMorsi(); 
+        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminMorsi();
+    });
 
-onSnapshot(collection(db, "conquiste"), (snapshot) => { 
-    conquisteDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-    window.renderConquiste(); 
-    if (document.getElementById('admin-content').style.display === 'block') window.renderAdminConquiste();
-});
+    onSnapshot(collection(db, "dungeon"), (snapshot) => { 
+        dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        window.renderDungeon(); 
+        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminDungeon();
+    });
 
-onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
-onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderSaldoLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminSaldoLogs(); });
+    onSnapshot(collection(db, "conquiste"), (snapshot) => { 
+        conquisteDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        window.renderConquiste(); 
+        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminConquiste();
+    });
 
-onSnapshot(doc(db, "config", "saldo"), (docSnap) => { 
-    if(docSnap.exists()) { saldoGlobale = docSnap.data().valore; } 
-    else { saldoGlobale = 0; setDoc(doc(db, "config", "saldo"), { valore: 0 }); }
-    document.getElementById('tot-saldo-globale').innerText = fmt(saldoGlobale) + " cr";
-    if (document.getElementById('admin-saldo-val')) document.getElementById('admin-saldo-val').value = saldoGlobale;
+    onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
+    onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderSaldoLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminSaldoLogs(); });
+
+    onSnapshot(doc(db, "config", "saldo"), (docSnap) => { 
+        if(docSnap.exists()) { saldoGlobale = docSnap.data().valore; } 
+        else { saldoGlobale = 0; setDoc(doc(db, "config", "saldo"), { valore: 0 }); }
+        document.getElementById('tot-saldo-globale').innerText = fmt(saldoGlobale) + " cr";
+        if (document.getElementById('admin-saldo-val')) document.getElementById('admin-saldo-val').value = saldoGlobale;
+    });
+}
+
+// Modifichiamo il controllo dell'autenticazione per avviare i listener
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        startFirestoreListeners();
+
+        if (user.email === "vampiri.gestore@horde.it") {
+            document.getElementById('global-lock').style.display = 'none';
+            document.getElementById('login-container-gestione').style.display = 'none';
+            document.getElementById('admin-content').style.display = 'block';
+            
+            // Re-indirizzamento istantaneo per evitare il vuoto
+            window.showSection('gestione'); 
+            refreshAdminUI();
+        } else if (user.email === "vampiri@horde.it") {
+            document.getElementById('global-lock').style.display = 'none';
+            document.getElementById('admin-content').style.display = 'none';
+            window.showSection('generale');
+        }
+    } else {
+        // Se non loggato, mostra i contenitori centrati
+        document.getElementById('global-lock').style.display = 'flex';
+        document.getElementById('admin-content').style.display = 'none';
+        const gestLogin = document.getElementById('login-container-gestione');
+        if(gestLogin) gestLogin.style.display = 'flex'; 
+    }
 });
