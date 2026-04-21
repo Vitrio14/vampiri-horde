@@ -212,15 +212,18 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Link Prova Fotografica</label>
+                    <label>Link Foto / Ricevuta</label>
                     <input type="url" id="mat-foto" placeholder="https://...">
                 </div>
                 <button onclick="window.registraVenditaMateriali()">Registra Transazione Materiali</button>
             </div>
 
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Storico Vendita Materiali</h2>
-            <div class="search-box">
-                <input type="text" id="search-materiali" placeholder="Cerca materiale, acquirente o vampiro..." onkeyup="window.renderMateriali()">
+            <div class="search-box" style="display: flex; gap: 10px;">
+                <input type="text" id="search-materiali" placeholder="Cerca materiale, acquirente o vampiro..." onkeyup="window.renderMateriali()" style="flex: 1;">
+                <select id="filter-tipo-mat" onchange="window.renderMateriali()" style="padding: 10px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #333; border-radius: 5px; max-width: 200px;">
+                    <option value="">Tutti i Materiali</option>
+                </select>
             </div>
             <div class="scroll-container">
                 <table>
@@ -292,12 +295,14 @@
                     </select>
                 </div>
                 <button onclick="window.eseguiCalcolo()">Calcola</button>
-                <div id="calc-result" class="calc-result-box">
-                    <h3 id="calc-res-nome" style="color: var(--gold-accent); margin-bottom: 15px;">-</h3>
+                <div id="calc-result" class="calc-result-box" style="display: none;">
+                    <h3 id="calc-res-nome" style="color: var(--gold-accent); margin-bottom: 15px; text-align: center;">-</h3>
+                    
+                    <h4 style="margin-top: 10px; margin-bottom: 10px; color: #aaa; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Vendite Carbonio</h4>
                     <div class="calc-item"><span>Carbonio Venduto</span><span id="calc-res-qty" style="color: var(--gold-dim);">0</span></div>
-                    <div class="calc-item"><span>Numero Vendite</span><span id="calc-res-count" style="color: var(--gold-dim);">0</span></div>
+                    <div class="calc-item"><span>Numero Transazioni</span><span id="calc-res-count" style="color: var(--gold-dim);">0</span></div>
                     <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-tot" style="color: var(--gold-dim);">0 cr</span></div>
-                    <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 15px; padding-top: 15px;">
+                    <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 5px; padding-top: 5px;">
                         <span style="color: var(--success-green);">Quota Propria (40%)</span>
                         <span id="calc-res-vamp" style="color: var(--success-green);">0 cr</span>
                     </div>
@@ -305,7 +310,21 @@
                         <span style="color: var(--withdraw-red);">Tributo Dinastia (60%)</span>
                         <span id="calc-res-din" style="color: var(--withdraw-red);">0 cr</span>
                     </div>
-                    <div id="calc-res-lista-dettaglio" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px; font-size: 0.7rem;"></div>
+
+                    <h4 style="margin-top: 25px; margin-bottom: 10px; color: #aaa; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Vendite Materiali</h4>
+                    <div class="calc-item"><span>Materiali Venduti</span><span id="calc-res-mat-qty" style="color: var(--gold-dim);">0</span></div>
+                    <div class="calc-item"><span>Numero Transazioni</span><span id="calc-res-mat-count" style="color: var(--gold-dim);">0</span></div>
+                    <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-mat-tot" style="color: var(--gold-dim);">0 cr</span></div>
+                    <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 5px; padding-top: 5px;">
+                        <span style="color: var(--success-green);">Quota Propria (Variabile)</span>
+                        <span id="calc-res-mat-vamp" style="color: var(--success-green);">0 cr</span>
+                    </div>
+                    <div class="calc-item">
+                        <span style="color: var(--withdraw-red);">Tributo Dinastia (Variabile)</span>
+                        <span id="calc-res-mat-din" style="color: var(--withdraw-red);">0 cr</span>
+                    </div>
+
+                    <div id="calc-res-lista-dettaglio" style="margin-top: 25px; border-top: 1px solid #333; padding-top: 15px; font-size: 0.75rem;"></div>
                 </div>
             </div>
         </section>
@@ -659,6 +678,42 @@
                     </div>
                 </div>
 
+                <div class="stats-grid" style="margin-top: 25px;">
+                    <div class="stat-card">
+                        <h3>Materiali Venduti <br> (TOTALE STORICO)</h3>
+                        <p id="admin-tot-mat-qty-storico" style="color: var(--gold-dim);">0x</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Crediti Materiali <br> (TOTALE STORICO)</h3>
+                        <p id="admin-tot-mat-crediti-storico" style="color: var(--gold-dim);">0 cr</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Tributo Dinastia Mat. <br> (TOTALE STORICO)</h3>
+                        <p id="admin-tot-mat-dinastia-storico" style="color: var(--gold-dim);">0 cr</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Transazioni Mat. <br> (STORICO)</h3>
+                        <p id="admin-tot-mat-count-storico" style="color: var(--gold-dim);">0</p>
+                    </div>
+                </div>
+
+                <div class="vamp-card" style="margin-top: 25px;">
+                    <h2>Archivio Database Vendita Materiali</h2>
+                    <div class="search-box" style="display:flex; gap:10px; margin-bottom: 10px;">
+                        <input type="text" id="search-admin-mat" placeholder="Filtra vampiro, materiale o acquirente..." onkeyup="window.renderAdminMateriali()" style="flex: 1;">
+                        <select id="filter-admin-tipo-mat" onchange="window.renderAdminMateriali()" style="padding: 10px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #333; border-radius: 5px; max-width: 200px;">
+                            <option value="">Tutti i Materiali</option>
+                        </select>
+                    </div>
+                    <div class="scroll-container" id="admin-materiali-container" style="max-height: 400px;"></div>
+                </div>
+
+                <div class="vamp-card">
+                    <h2>Archivio Storico Vendite Carbonio</h2>
+                    <div class="search-box"><input type="text" id="search-admin-archivio" placeholder="Filtra..." onkeyup="window.renderArchivioGestione()"></div>
+                    <div class="scroll-container" id="admin-archivio-container"></div>
+                </div>
+
                 <div class="vamp-card">
                     <h2>Gestione Saldo Dinastia</h2>
                     <div style="display: flex; gap: 15px; align-items: flex-end;">
@@ -728,12 +783,6 @@
                     <h2>Log Saldo</h2>
                     <div class="search-box"><input type="text" id="search-admin-saldo-logs" placeholder="Cerca..." onkeyup="window.renderAdminSaldoLogs()"></div>
                     <div class="scroll-container"><div id="admin-saldo-logs-box"></div></div>
-                </div>
-
-                <div class="vamp-card">
-                    <h2>Archivio Storico Vendite</h2>
-                    <div class="search-box"><input type="text" id="search-admin-archivio" placeholder="Filtra..." onkeyup="window.renderArchivioGestione()"></div>
-                    <div class="scroll-container" id="admin-archivio-container"></div>
                 </div>
                 
                 <button onclick="window.logoutAdmin()" style="background: transparent; border: 1px solid #444; margin: 20px auto; display: block; width: auto; color: #555;">Chiudi Sessione</button>

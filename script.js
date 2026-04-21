@@ -277,6 +277,26 @@ function renderVampiriLists() {
     if(tbody) tbody.innerHTML = listaVampiri.map(v => `<tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>`).join('');
 }
 
+// --- POPOLA FILTRO MATERIALI ---
+function popolaFiltroMateriali() {
+    const matTipi = [...new Set(venditeMateriali.map(m => (m.materiale || "").trim()))].filter(Boolean).sort();
+    const filterEl = document.getElementById('filter-tipo-mat');
+    const adminFilterEl = document.getElementById('filter-admin-tipo-mat');
+
+    const optionsHTML = `<option value="">Tutti i Materiali</option>` + matTipi.map(t => `<option value="${t}">${t}</option>`).join('');
+
+    if(filterEl) {
+        const currentVal = filterEl.value;
+        filterEl.innerHTML = optionsHTML;
+        filterEl.value = currentVal;
+    }
+    if(adminFilterEl) {
+        const currentVal = adminFilterEl.value;
+        adminFilterEl.innerHTML = optionsHTML;
+        adminFilterEl.value = currentVal;
+    }
+}
+
 // --- LOGICA VENDITA MATERIALI ---
 window.updateMatTot = () => {
     const qtyEl = document.getElementById('mat-qty');
@@ -363,11 +383,14 @@ window.renderMateriali = () => {
     if(!tbody) return;
     const searchInput = document.getElementById('search-materiali');
     const search = searchInput ? searchInput.value.toLowerCase() : "";
+    const tipoFilterElement = document.getElementById('filter-tipo-mat');
+    const tipoFilter = tipoFilterElement ? tipoFilterElement.value.toLowerCase() : "";
     const week = getWeekYearKey(new Date());
 
     tbody.innerHTML = venditeMateriali
-        .filter(m => m.settimanaEtichetta === week && (
-            (m.vampiro || "").toLowerCase().includes(search) || 
+        .filter(m => m.settimanaEtichetta === week && 
+            (tipoFilter === "" || (m.materiale || "").toLowerCase() === tipoFilter) &&
+            ((m.vampiro || "").toLowerCase().includes(search) || 
             (m.materiale || "").toLowerCase().includes(search) || 
             (m.acquirente || "").toLowerCase().includes(search)
         ))
@@ -408,8 +431,11 @@ window.renderAdminMateriali = () => {
             wrapper.className = "vamp-card";
             wrapper.innerHTML = `
                 <h2>Archivio Database Vendita Materiali</h2>
-                <div class="search-box">
-                    <input type="text" id="search-admin-mat" placeholder="Filtra materiale o vampiro..." onkeyup="window.renderAdminMateriali()">
+                <div class="search-box" style="display:flex; gap:10px; margin-bottom: 10px;">
+                    <input type="text" id="search-admin-mat" placeholder="Filtra vampiro, materiale o acquirente..." onkeyup="window.renderAdminMateriali()">
+                    <select id="filter-admin-tipo-mat" onchange="window.renderAdminMateriali()" style="padding: 10px; background: #1a1a1a; color: #e0e0e0; border: 1px solid #333; border-radius: 5px;">
+                        <option value="">Tutti i Materiali</option>
+                    </select>
                 </div>
                 <div class="scroll-container" id="admin-materiali-container" style="max-height: 400px;"></div>
             `;
@@ -420,6 +446,7 @@ window.renderAdminMateriali = () => {
                 adminContent.appendChild(wrapper);
             }
             container = document.getElementById('admin-materiali-container');
+            popolaFiltroMateriali();
         } else {
             return;
         }
@@ -427,6 +454,8 @@ window.renderAdminMateriali = () => {
 
     const searchInput = document.getElementById('search-admin-mat');
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+    const filterInput = document.getElementById('filter-admin-tipo-mat');
+    const filterTerm = filterInput ? filterInput.value.toLowerCase() : "";
 
     const gruppi = {};
     venditeMateriali.forEach(m => { 
@@ -436,12 +465,14 @@ window.renderAdminMateriali = () => {
 
     container.innerHTML = Object.keys(gruppi).sort().reverse().map(key => {
         const filtered = gruppi[key].filter(m => 
-            (m.vampiro || "").toLowerCase().includes(searchTerm) || 
+            (filterTerm === "" || (m.materiale || "").toLowerCase() === filterTerm) &&
+            ((m.vampiro || "").toLowerCase().includes(searchTerm) || 
             (m.materiale || "").toLowerCase().includes(searchTerm) ||
-            (m.acquirente || "").toLowerCase().includes(searchTerm)
+            (m.acquirente || "").toLowerCase().includes(searchTerm))
         ).sort((a,b) => b.timestamp - a.timestamp);
 
-        if(filtered.length === 0 && searchTerm !== "") return "";
+        if(filtered.length === 0 && (searchTerm !== "" || filterTerm !== "")) return "";
+        if(filtered.length === 0) return "";
         const range = getWeekRangeLabel(key);
         const weekTotalQty = filtered.reduce((sum, m) => sum + (m.qty || 0), 0);
         const weekTotalCr = filtered.reduce((sum, m) => sum + (m.prezzoTot || 0), 0);
@@ -944,39 +975,70 @@ window.eseguiCalcolo = () => {
     if(!nomeInput) return vampireToast("Seleziona un vampiro per il calcolo.", "error");
     
     const resBox = document.getElementById('calc-result');
-    let filtrati = [];
+    let filtratiCarbonio = [];
+    let filtratiMateriali = [];
 
     if(periodo === "all") {
-        filtrati = vendite.filter(v => v.nome === nomeInput);
+        filtratiCarbonio = vendite.filter(v => v.nome === nomeInput);
+        filtratiMateriali = venditeMateriali.filter(m => m.vampiro === nomeInput);
     } else if(periodo === "current") {
         const currentWeek = getWeekYearKey(new Date());
-        filtrati = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome === nomeInput);
+        filtratiCarbonio = vendite.filter(v => v.settimanaEtichetta === currentWeek && v.nome === nomeInput);
+        filtratiMateriali = venditeMateriali.filter(m => m.settimanaEtichetta === currentWeek && m.vampiro === nomeInput);
     } else {
-        filtrati = vendite.filter(v => v.settimanaEtichetta === periodo && v.nome === nomeInput);
+        filtratiCarbonio = vendite.filter(v => v.settimanaEtichetta === periodo && v.nome === nomeInput);
+        filtratiMateriali = venditeMateriali.filter(m => m.settimanaEtichetta === periodo && m.vampiro === nomeInput);
     }
 
-    if(filtrati.length === 0) { 
+    if(filtratiCarbonio.length === 0 && filtratiMateriali.length === 0) { 
         resBox.style.display = "none"; 
         return vampireToast("Nessun record trovato per i parametri scelti.", "error"); 
     }
     
-    const totQty = filtrati.reduce((a, b) => a + (b.qty || 0), 0);
-    const totCr = filtrati.reduce((a, b) => a + (b.totale || 0), 0);
+    // Calcoli Carbonio
+    const totQtyCarbonio = filtratiCarbonio.reduce((a, b) => a + (b.qty || 0), 0);
+    const totCrCarbonio = filtratiCarbonio.reduce((a, b) => a + (b.totale || 0), 0);
     
+    // Calcoli Materiali
+    const totQtyMat = filtratiMateriali.reduce((a, b) => a + (b.qty || 0), 0);
+    const totCrMat = filtratiMateriali.reduce((a, b) => a + (b.prezzoTot || 0), 0);
+    const totVampMat = filtratiMateriali.reduce((a, b) => a + (b.vPro || 0), 0);
+    const totDinMat = filtratiMateriali.reduce((a, b) => a + (b.vDin || 0), 0);
+
     document.getElementById('calc-res-nome').innerText = nomeInput.toUpperCase();
-    document.getElementById('calc-res-qty').innerText = fmt(totQty);
-    document.getElementById('calc-res-tot').innerText = fmt(totCr) + " cr";
-    document.getElementById('calc-res-vamp').innerText = fmt(totCr * 0.4) + " cr";
-    document.getElementById('calc-res-din').innerText = fmt(totCr * 0.6) + " cr";
-    document.getElementById('calc-res-count').innerText = filtrati.length;
     
-    const listaHtml = filtrati.sort((a,b) => b.timestamp - a.timestamp).map(v => `
+    // Assegnazioni Carbonio
+    if(document.getElementById('calc-res-qty')) document.getElementById('calc-res-qty').innerText = fmt(totQtyCarbonio);
+    if(document.getElementById('calc-res-tot')) document.getElementById('calc-res-tot').innerText = fmt(totCrCarbonio) + " cr";
+    if(document.getElementById('calc-res-vamp')) document.getElementById('calc-res-vamp').innerText = fmt(totCrCarbonio * 0.4) + " cr";
+    if(document.getElementById('calc-res-din')) document.getElementById('calc-res-din').innerText = fmt(totCrCarbonio * 0.6) + " cr";
+    if(document.getElementById('calc-res-count')) document.getElementById('calc-res-count').innerText = filtratiCarbonio.length;
+    
+    // Assegnazioni Materiali
+    if(document.getElementById('calc-res-mat-qty')) document.getElementById('calc-res-mat-qty').innerText = fmt(totQtyMat);
+    if(document.getElementById('calc-res-mat-tot')) document.getElementById('calc-res-mat-tot').innerText = fmt(totCrMat) + " cr";
+    if(document.getElementById('calc-res-mat-vamp')) document.getElementById('calc-res-mat-vamp').innerText = fmt(totVampMat) + " cr";
+    if(document.getElementById('calc-res-mat-din')) document.getElementById('calc-res-mat-din').innerText = fmt(totDinMat) + " cr";
+    if(document.getElementById('calc-res-mat-count')) document.getElementById('calc-res-mat-count').innerText = filtratiMateriali.length;
+
+    const listaHtmlCarbonio = filtratiCarbonio.sort((a,b) => b.timestamp - a.timestamp).map(v => `
         <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
-            <span>${v.dataStr || ''} (${v.ora || ''})</span>
+            <span>[CARB] ${v.dataStr || ''} (${v.ora || ''})</span>
             <span style="color: var(--gold-dim);">${v.qty || 0}x - ${fmt(v.totale || 0)} cr</span>
         </div>
     `).join('');
-    document.getElementById('calc-res-lista-dettaglio').innerHTML = "<strong>Dettaglio Vendite:</strong>" + listaHtml;
+    
+    const listaHtmlMateriali = filtratiMateriali.sort((a,b) => b.timestamp - a.timestamp).map(m => `
+        <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
+            <span>[MAT] ${m.materiale || 'Materiale'} | ${m.dataStr || ''} (${m.ora || ''})</span>
+            <span style="color: var(--gold-dim);">${m.qty || 0}x - ${fmt(m.prezzoTot || 0)} cr</span>
+        </div>
+    `).join('');
+
+    document.getElementById('calc-res-lista-dettaglio').innerHTML = 
+        (listaHtmlCarbonio ? "<strong>Dettaglio Vendite Carbonio:</strong>" + listaHtmlCarbonio : "") + 
+        (listaHtmlMateriali ? "<br><strong>Dettaglio Vendite Materiali:</strong>" + listaHtmlMateriali : "");
+
     resBox.style.display = "block"; 
     vampireToast("Resoconto generato con successo.", "success");
 };
@@ -1230,6 +1292,7 @@ function getWeekRangeLabel(weekKey) {
 }
 
 function aggiornaStats() {
+    // Statistiche Carbonio (Esistenti)
     const currentWeekKey = getWeekYearKey(new Date());
     const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
     const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + (curr.dinastia || 0), 0);
@@ -1246,6 +1309,16 @@ function aggiornaStats() {
     if(document.getElementById('admin-tot-dinastia-storico')) document.getElementById('admin-tot-dinastia-storico').innerText = fmt(dinastiaStorico) + " cr";
     if(document.getElementById('admin-tot-ekaton-storico')) document.getElementById('admin-tot-ekaton-storico').innerText = fmt(Math.floor(ekatonStorico)) + " cr";
     if(document.getElementById('admin-tot-count-storico')) document.getElementById('admin-tot-count-storico').innerText = vendite.length;
+
+    // Statistiche Materiali
+    const matQtyStorico = venditeMateriali.reduce((acc, curr) => acc + (curr.qty || 0), 0);
+    const matCreditiStorico = venditeMateriali.reduce((acc, curr) => acc + (curr.prezzoTot || 0), 0);
+    const matDinastiaStorico = venditeMateriali.reduce((acc, curr) => acc + (curr.vDin || 0), 0);
+
+    if(document.getElementById('admin-tot-mat-qty-storico')) document.getElementById('admin-tot-mat-qty-storico').innerText = fmt(matQtyStorico) + "x";
+    if(document.getElementById('admin-tot-mat-crediti-storico')) document.getElementById('admin-tot-mat-crediti-storico').innerText = fmt(matCreditiStorico) + " cr";
+    if(document.getElementById('admin-tot-mat-dinastia-storico')) document.getElementById('admin-tot-mat-dinastia-storico').innerText = fmt(matDinastiaStorico) + " cr";
+    if(document.getElementById('admin-tot-mat-count-storico')) document.getElementById('admin-tot-mat-count-storico').innerText = venditeMateriali.length;
 }
 
 // --- LOGICA SEGRETA SBLOCCO MORSI ---
@@ -1298,7 +1371,9 @@ function startFirestoreListeners() {
 
     onSnapshot(collection(db, "vendite_materiali"), (snapshot) => { 
         venditeMateriali = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        popolaFiltroMateriali(); // Aggiorniamo la lista dei filtri dinamicamente
         window.renderMateriali(); 
+        aggiornaStats(); // <--- INSERITO QUI (Questo sblocca l'aggiornamento in tempo reale nell'area admin)
         if (document.getElementById('admin-content').style.display === 'block') {
             if(typeof window.renderAdminMateriali === 'function') window.renderAdminMateriali(); 
         }
