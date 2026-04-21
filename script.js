@@ -374,7 +374,7 @@ window.renderMateriali = () => {
         .sort((a,b) => b.timestamp - a.timestamp)
         .map(m => `
         <tr>
-            <td style="font-size:0.7rem;">${m.dataStr || ''}</td>
+            <td style="font-size:0.7rem;"><span class="ts-label">${m.dataStr || ''}</span> <br> <strong>${m.ora || ''}</strong></td>
             <td>${m.vampiro || ''}</td>
             <td style="color:var(--gold-accent)">${m.materiale || ''}</td>
             <td>${m.acquirente || ''}</td>
@@ -454,7 +454,7 @@ window.renderAdminMateriali = () => {
                     <thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Materiale</th><th>Acquirente</th><th>Qty</th><th>Totale (cr)</th><th>Propria (cr)</th><th>Dinastia (cr)</th><th>Azione</th></tr></thead>
                     <tbody>${filtered.map(m => `
                         <tr>
-                            <td style="font-size:0.65rem">${m.dataStr || ''}<br>${m.ora || ''}</td>
+                            <td style="font-size:0.65rem"><span class="ts-label">${m.dataStr || ''}</span><br><strong>${m.ora || ''}</strong></td>
                             <td>${m.vampiro || ''}</td>
                             <td style="color: var(--gold-accent);">${m.materiale || ''}</td>
                             <td>${m.acquirente || ''}</td>
