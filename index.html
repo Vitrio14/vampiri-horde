@@ -33,6 +33,7 @@
         <div class="nav-links">
             <div class="nav-link active" onclick="window.showSection('generale')">Generale</div>
             <div class="nav-link" onclick="window.showSection('vendite')">Vendite</div>
+            <div class="nav-link" onclick="window.showSection('materiali')">Vendita Materiali</div>
             <div class="nav-link" onclick="window.showSection('saldo')">Saldo</div>
             <div class="nav-link" onclick="window.showSection('calcolo')">Calcolo</div>
             <div class="nav-link" onclick="window.showSection('inventario')">Inventario</div>
@@ -151,6 +152,96 @@
             </div>
         </section>
 
+        <section id="materiali" class="section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Materiali venduti <br> (Settimana)</h3>
+                    <p id="mat-tot-qty-sett" style="color: var(--gold-dim);">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Crediti Materiali <br> (Settimana)</h3>
+                    <p id="mat-tot-crediti-sett" style="color: var(--gold-dim);">0 cr</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Tributo Dinastia <br> (Settimana)</h3>
+                    <p id="mat-tot-dinastia-sett" style="color: var(--gold-dim);">0 cr</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Vendite Totali <br> (Settimana)</h3>
+                    <p id="mat-tot-count-sett" style="color: var(--gold-dim);">0</p>
+                </div>
+            </div>
+
+            <div class="vamp-card">
+                <h2>Registra Vendita Materiali</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Vampiro</label>
+                        <select id="mat-vamp-nome" class="vampiro-select-list"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Materiale Venduto</label>
+                        <input type="text" id="mat-tipo" placeholder="Esempio: Rame, Pile...">
+                    </div>
+                    <div class="form-group">
+                        <label>Dinastia Acquirente</label>
+                        <input type="text" id="mat-acquirente" placeholder="Nome Dinastia/Persona...">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Quantità</label>
+                        <input type="number" id="mat-qty" placeholder="0" oninput="window.updateMatTot()">
+                    </div>
+                    <div class="form-group">
+                        <label>Prezzo Unitario (cr)</label>
+                        <input type="number" id="mat-prezzo-un" placeholder="0" oninput="window.updateMatTot()">
+                    </div>
+                    <div class="form-group">
+                        <label>Totale Calcolato (cr)</label>
+                        <input type="number" id="mat-prezzo-tot" placeholder="0" readonly style="background: rgba(255,255,255,0.05); color: var(--gold-accent); font-weight: bold;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>% Propria (Guadagno)</label>
+                        <input type="number" id="mat-perc-propria" placeholder="Es: 70">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Link Foto / Ricevuta</label>
+                    <input type="url" id="mat-foto" placeholder="https://...">
+                </div>
+                <button onclick="window.registraVenditaMateriali()">Registra Transazione Materiali</button>
+            </div>
+
+            <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Storico Vendita Materiali</h2>
+            <div class="search-box">
+                <input type="text" id="search-materiali" placeholder="Cerca materiale, acquirente o vampiro..." onkeyup="window.renderMateriali()">
+            </div>
+            <div class="scroll-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Vampiro</th>
+                            <th>Materiale</th>
+                            <th>Acquirente</th>
+                            <th>Qty</th>
+                            <th>Totale</th>
+                            <th>Dinastia (%)</th>
+                            <th>Propria (%)</th>
+                            <th>Foto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-materiali"></tbody>
+                </table>
+            </div>
+        </section>
+
         <section id="saldo" class="section">
             <div class="vamp-card">
                 <h2>Gestione Crediti Dinastia</h2>
@@ -251,7 +342,7 @@
                     <p id="stat-dungeon-tot" style="color: var(--gold-dim);">0</p>
                 </div>
                 <div class="stat-card">
-                    <h3>Dungeon <br> Completati</h3>
+                    <h3>Dungeon <br> Successo</h3>
                     <p id="stat-dungeon-vittorie" style="color: var(--success-green);">0</p>
                 </div>
                 <div class="stat-card">
@@ -461,7 +552,6 @@
                 <div id="login-gestione" class="vamp-card" style="max-width: 400px; width: 100%; text-align: center; background: rgba(18, 18, 18, 0.95); border-color: var(--gold-accent);">
                     <h2>Accesso Gestore</h2>
                     <p style="font-size: 0.7rem; margin-bottom: 5px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Identità: vampiri.gestore@horde.it</p>
-                    <p style="font-size: 0.6rem; margin-bottom: 25px; opacity: 0.3; text-transform: uppercase;">Inserire la chiave del sangue</p>
                     <div class="form-group">
                         <input type="password" id="admin-pass" style="text-align: center; margin: 20px 0;" onkeydown="if(event.key==='Enter') window.checkAccess()" placeholder="Password">
                     </div>

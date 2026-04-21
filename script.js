@@ -19,6 +19,7 @@ const auth = getAuth(app);
 
 // VARIABILI GLOBALI
 let vendite = [];
+let venditeMateriali = []; 
 let inventarioDati = [];
 let logs = [];
 let saldoLogs = [];
@@ -119,7 +120,6 @@ onAuthStateChanged(auth, (user) => {
             document.getElementById('login-container-gestione').style.display = 'none';
             document.getElementById('admin-content').style.display = 'block';
             
-            // Correzione: Puntiamo a 'gestione' se la sezione si chiama così nell'HTML
             window.showSection('gestione'); 
             refreshAdminUI();
         } else if (user.email === "vampiri@horde.it") {
@@ -149,6 +149,7 @@ function refreshAdminUI() {
     window.renderAdminSaldoLogs();
     window.renderAdminDungeon(); 
     window.renderAdminConquiste();
+    window.renderAdminMateriali(); 
     renderVampiriLists(); 
     renderDinamici(); 
     aggiornaStats(); 
@@ -275,6 +276,208 @@ function renderVampiriLists() {
     const tbody = document.getElementById('admin-vampiri-body');
     if(tbody) tbody.innerHTML = listaVampiri.map(v => `<tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>`).join('');
 }
+
+// --- LOGICA VENDITA MATERIALI ---
+window.updateMatTot = () => {
+    const qtyEl = document.getElementById('mat-qty');
+    const unEl = document.getElementById('mat-prezzo-un');
+    const totEl = document.getElementById('mat-prezzo-tot');
+    if(qtyEl && unEl && totEl) {
+        const qty = parseFloat(qtyEl.value) || 0;
+        const un = parseFloat(unEl.value) || 0;
+        totEl.value = (qty * un).toFixed(0);
+    }
+};
+
+window.registraVenditaMateriali = async () => {
+    try {
+        const nomeEl = document.getElementById('mat-vamp-nome');
+        const tipoEl = document.getElementById('mat-tipo');
+        const acqEl = document.getElementById('mat-acquirente');
+        const qtyEl = document.getElementById('mat-qty');
+        const prUnEl = document.getElementById('mat-prezzo-un');
+        const pProEl = document.getElementById('mat-perc-propria'); // L'utente inserisce SOLO questa
+        const fotoEl = document.getElementById('mat-foto');
+
+        if(!nomeEl || !tipoEl || !qtyEl || !prUnEl) {
+            return vampireToast("Errore di interfaccia (campi mancanti).", "error");
+        }
+
+        const nome = nomeEl.value;
+        const tipo = tipoEl.value.trim();
+        const acquirente = acqEl ? acqEl.value.trim() : "N/D";
+        const qty = parseFloat(qtyEl.value);
+        const prezzoUn = parseFloat(prUnEl.value);
+
+        if(!nome || !tipo || isNaN(qty) || isNaN(prezzoUn) || qty <= 0 || prezzoUn <= 0) {
+            return vampireToast("Inserisci tutti i dati obbligatori in modo corretto.", "error");
+        }
+
+        const prezzoTot = qty * prezzoUn;
+        
+        // L'utente inserisce la % Propria. Il resto va alla Dinastia in automatico.
+        const percPro = parseFloat(pProEl ? pProEl.value : 0) || 0;
+        const percDin = 100 - percPro; // Calcolo automatico della % Dinastia
+
+        const foto = (fotoEl && fotoEl.value) ? fotoEl.value : "#";
+
+        // Il calcolo indipendente della percentuale sempre e solo sul totale (prezzoTot)
+        const vPro = (prezzoTot * percPro) / 100;
+        const vDin = (prezzoTot * percDin) / 100;
+
+        const now = new Date();
+        await addDoc(collection(db, "vendite_materiali"), {
+            vampiro: nome,
+            materiale: tipo,
+            acquirente: acquirente,
+            qty: qty,
+            prezzoUn: prezzoUn,
+            prezzoTot: prezzoTot,
+            pPro: percPro,
+            pDin: percDin,   // Salviamo anche la % calcolata per storicità
+            vPro: vPro,
+            vDin: vDin,      // Salviamo la quota della dinastia
+            timestamp: Date.now(),
+            dataStr: now.toLocaleDateString('it-IT'),
+            ora: now.toLocaleTimeString('it-IT'),
+            settimanaEtichetta: getWeekYearKey(now)
+        });
+
+        vampireToast("Vendita materiali registrata.", "success");
+
+        // Reset campi
+        [tipoEl, acqEl, qtyEl, prUnEl, pProEl, fotoEl].forEach(el => {
+            if(el) el.value = "";
+        });
+        const totEl = document.getElementById('mat-prezzo-tot');
+        if(totEl) totEl.value = "";
+
+    } catch (error) {
+        console.error("Errore salvataggio materiali: ", error);
+        vampireToast("Errore durante la registrazione.", "error");
+    }
+};
+
+window.renderMateriali = () => {
+    const tbody = document.getElementById('lista-materiali');
+    if(!tbody) return;
+    const searchInput = document.getElementById('search-materiali');
+    const search = searchInput ? searchInput.value.toLowerCase() : "";
+    const week = getWeekYearKey(new Date());
+
+    tbody.innerHTML = venditeMateriali
+        .filter(m => m.settimanaEtichetta === week && (
+            (m.vampiro || "").toLowerCase().includes(search) || 
+            (m.materiale || "").toLowerCase().includes(search) || 
+            (m.acquirente || "").toLowerCase().includes(search)
+        ))
+        .sort((a,b) => b.timestamp - a.timestamp)
+        .map(m => `
+        <tr>
+            <td style="font-size:0.7rem;">${m.dataStr || ''}</td>
+            <td>${m.vampiro || ''}</td>
+            <td style="color:var(--gold-accent)">${m.materiale || ''}</td>
+            <td>${m.acquirente || ''}</td>
+            <td>${fmt(m.qty)}</td>
+            <td style="color:var(--gold-dim)">${fmt(m.prezzoTot)} cr</td>
+            <td style="color:var(--withdraw-red)">${fmt(m.vDin)} cr <small>(${m.pDin || 0}%)</small></td>
+            <td style="color:var(--success-green)">${fmt(m.vPro)} cr <small>(${m.pPro || 0}%)</small></td>
+            <td><a href="${m.foto}" target="_blank" class="photo-link">FOTO</a></td>
+        </tr>`).join('');
+    
+    aggiornaStatsMateriali();
+};
+
+function aggiornaStatsMateriali() {
+    const week = getWeekYearKey(new Date());
+    const curr = venditeMateriali.filter(m => m.settimanaEtichetta === week);
+    if(document.getElementById('mat-tot-qty-sett')) document.getElementById('mat-tot-qty-sett').innerText = fmt(curr.reduce((a,b) => a + (b.qty || 0), 0));
+    if(document.getElementById('mat-tot-crediti-sett')) document.getElementById('mat-tot-crediti-sett').innerText = fmt(curr.reduce((a,b) => a + (b.prezzoTot || 0), 0)) + " cr";
+    if(document.getElementById('mat-tot-dinastia-sett')) document.getElementById('mat-tot-dinastia-sett').innerText = fmt(curr.reduce((a,b) => a + (b.vDin || 0), 0)) + " cr";
+    if(document.getElementById('mat-tot-count-sett')) document.getElementById('mat-tot-count-sett').innerText = curr.length;
+}
+
+// Logica inserimento visualizzazione per gestione (Admin)
+window.renderAdminMateriali = () => {
+    let container = document.getElementById('admin-materiali-container');
+    if(!container) {
+        // Se non esiste nell'HTML, lo creo dinamicamente e lo aggiungo nella sezione admin
+        const adminContent = document.getElementById('admin-content');
+        if(adminContent) {
+            const wrapper = document.createElement('div');
+            wrapper.className = "vamp-card";
+            wrapper.innerHTML = `
+                <h2>Archivio Database Vendita Materiali</h2>
+                <div class="search-box">
+                    <input type="text" id="search-admin-mat" placeholder="Filtra materiale o vampiro..." onkeyup="window.renderAdminMateriali()">
+                </div>
+                <div class="scroll-container" id="admin-materiali-container" style="max-height: 400px;"></div>
+            `;
+            const logOutBtn = adminContent.querySelector('button[onclick="window.logoutAdmin()"]');
+            if(logOutBtn) {
+                adminContent.insertBefore(wrapper, logOutBtn);
+            } else {
+                adminContent.appendChild(wrapper);
+            }
+            container = document.getElementById('admin-materiali-container');
+        } else {
+            return;
+        }
+    }
+
+    const searchInput = document.getElementById('search-admin-mat');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+
+    const gruppi = {};
+    venditeMateriali.forEach(m => { 
+        if(!gruppi[m.settimanaEtichetta]) gruppi[m.settimanaEtichetta] = []; 
+        gruppi[m.settimanaEtichetta].push(m); 
+    });
+
+    container.innerHTML = Object.keys(gruppi).sort().reverse().map(key => {
+        const filtered = gruppi[key].filter(m => 
+            (m.vampiro || "").toLowerCase().includes(searchTerm) || 
+            (m.materiale || "").toLowerCase().includes(searchTerm) ||
+            (m.acquirente || "").toLowerCase().includes(searchTerm)
+        ).sort((a,b) => b.timestamp - a.timestamp);
+
+        if(filtered.length === 0 && searchTerm !== "") return "";
+        const range = getWeekRangeLabel(key);
+        const weekTotalQty = filtered.reduce((sum, m) => sum + (m.qty || 0), 0);
+        const weekTotalCr = filtered.reduce((sum, m) => sum + (m.prezzoTot || 0), 0);
+        const weekTotalDin = filtered.reduce((sum, m) => sum + (m.vDin || 0), 0);
+        
+        return `<div class="week-archive-block">
+            <div class="week-title">${range} | Transazioni: ${filtered.length} | Qty: <span style="color: var(--gold-dim);">${fmt(weekTotalQty)}x</span> | Valore Tot: <span style="color: var(--gold-dim);">${fmt(weekTotalCr)} cr</span> | Quota Dinastia: <span style="color: var(--gold-dim);">${fmt(weekTotalDin)} cr</span></div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Materiale</th><th>Acquirente</th><th>Qty</th><th>Totale (cr)</th><th>Propria (cr)</th><th>Dinastia (cr)</th><th>Azione</th></tr></thead>
+                    <tbody>${filtered.map(m => `
+                        <tr>
+                            <td style="font-size:0.65rem">${m.dataStr || ''}<br>${m.ora || ''}</td>
+                            <td>${m.vampiro || ''}</td>
+                            <td style="color: var(--gold-accent);">${m.materiale || ''}</td>
+                            <td>${m.acquirente || ''}</td>
+                            <td style="color: var(--gold-dim);">${fmt(m.qty)}</td>
+                            <td>${fmt(m.prezzoTot)}</td>
+                            <td>${fmt(m.vPro)} <small>(${m.pPro || 0}%)</small></td>
+                            <td>${fmt(m.vDin)} <small>(${m.pDin || 0}%)</small></td>
+                            <td><button class="btn-delete" onclick="window.adminDeleteMat('${m.id}')">X</button></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    }).join('');
+};
+
+window.adminDeleteMat = async (id) => {
+    const res = await Swal.fire({ title: 'Elimina transazione materiale?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
+    if(res.isConfirmed) { 
+        await deleteDoc(doc(db, "vendite_materiali", id)); 
+        vampireToast("Record rimosso con successo.", "success"); 
+    }
+};
 
 // --- LOGICA MORSI ---
 window.registraMorso = async () => {
@@ -701,7 +904,7 @@ window.movimentoSaldo = async () => {
         utente: nome, tipo: azione, qty: importo, motivo, timestamp: Date.now(), 
         dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT')
     });
-    vampireToast(`Operazione di ${action} completata.`, "success");
+    vampireToast(`Operazione di ${azione} completata.`, "success");
     document.getElementById('saldo-importo').value = ""; document.getElementById('saldo-motivo').value = "";
 };
 
@@ -1093,6 +1296,14 @@ function startFirestoreListeners() {
         if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
     });
 
+    onSnapshot(collection(db, "vendite_materiali"), (snapshot) => { 
+        venditeMateriali = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+        window.renderMateriali(); 
+        if (document.getElementById('admin-content').style.display === 'block') {
+            if(typeof window.renderAdminMateriali === 'function') window.renderAdminMateriali(); 
+        }
+    });
+
     onSnapshot(collection(db, "inventario"), (snapshot) => { 
         inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
         window.renderInventario(); 
@@ -1129,7 +1340,7 @@ function startFirestoreListeners() {
     });
 }
 
-    // --- PROTEZIONE INTERFACCIA ---
+// --- PROTEZIONE INTERFACCIA ---
 
 // 1. Blocca il tasto destro
 document.addEventListener('contextmenu', event => event.preventDefault());
