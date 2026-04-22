@@ -185,33 +185,46 @@
                     </div>
                     <div class="form-group">
                         <label>Dinastia Acquirente</label>
-                        <input type="text" id="mat-acquirente" placeholder="Nome Dinastia/Persona...">
+                        <select id="mat-acquirente">
+                            <option value="" disabled selected>Seleziona Dinastia/Persona...</option>
+                            <option value="Vampiri">Vampiri</option>
+                            <option value="Demoni">Demoni</option>
+                            <option value="Kitzune">Kitzune</option>
+                            <option value="Lycan">Lycan</option>
+                            <option value="Ghoul">Ghoul</option>
+                            <option value="Stregoni">Stregoni</option>
+                            <option value="Elyri">Elyri</option>
+                            <option value="Umani">Umani</option>
+                        </select>
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; margin-top: 10px;">
+                    
+                    <div class="form-group">
+                        <label>Tipo Vendita</label>
+                        <select id="mat-tipo-vendita" onchange="window.toggleTipoVendita()">
+                            <option value="mercante">Vendita Mercante (75 cr fisso)</option>
+                            <option value="materiale">Vendita Materiale (Prezzo Libero)</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Quantità</label>
                         <input type="number" id="mat-qty" placeholder="0" oninput="window.updateMatTot()">
                     </div>
+                    
                     <div class="form-group">
                         <label>Prezzo Unitario (cr)</label>
-                        <input type="number" id="mat-prezzo-un" placeholder="0" oninput="window.updateMatTot()">
+                        <input type="number" id="mat-prezzo-un" value="75" readonly style="opacity: 0.7;" oninput="window.updateMatTot()">
                     </div>
+                    
                     <div class="form-group">
                         <label>Totale Calcolato (cr)</label>
                         <input type="number" id="mat-prezzo-tot" placeholder="0" readonly style="background: rgba(255,255,255,0.05); color: var(--gold-accent); font-weight: bold;">
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label>% Propria (Guadagno)</label>
-                        <input type="number" id="mat-perc-propria" placeholder="Es: 70">
-                    </div>
-                </div>
-
-                <div class="form-group">
+                <div class="form-group" style="margin-top: 10px;">
                     <label>Link Foto / Ricevuta</label>
                     <input type="url" id="mat-foto" placeholder="https://...">
                 </div>
@@ -578,7 +591,7 @@
                     
                     <p style="margin-top: 20px; font-size: 0.7rem; color: var(--gold-dim); cursor: pointer; text-transform: uppercase; letter-spacing: 1px;" 
                        onclick="location.reload()">
-                       Torna al login membro
+                        Torna al login membro
                     </p>
                 </div>
             </div>

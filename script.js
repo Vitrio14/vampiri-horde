@@ -298,10 +298,33 @@ function popolaFiltroMateriali() {
 }
 
 // --- LOGICA VENDITA MATERIALI ---
+
+// Gestisce il blocco/sblocco del campo prezzo
+window.toggleTipoVendita = () => {
+    const tipo = document.getElementById('mat-tipo-vendita').value;
+    const prUnEl = document.getElementById('mat-prezzo-un');
+    
+    if (prUnEl) {
+        if (tipo === 'mercante') {
+            prUnEl.value = 75;
+            prUnEl.readOnly = true;
+            prUnEl.style.opacity = "0.7";
+        } else {
+            prUnEl.value = "";
+            prUnEl.readOnly = false;
+            prUnEl.style.opacity = "1";
+            prUnEl.placeholder = "Inserisci Prezzo";
+        }
+    }
+    // Ricalcola il totale per sicurezza
+    window.updateMatTot();
+};
+
 window.updateMatTot = () => {
     const qtyEl = document.getElementById('mat-qty');
-    const unEl = document.getElementById('mat-prezzo-un');
+    const unEl = document.getElementById('mat-prezzo-un'); 
     const totEl = document.getElementById('mat-prezzo-tot');
+    
     if(qtyEl && unEl && totEl) {
         const qty = parseFloat(qtyEl.value) || 0;
         const un = parseFloat(unEl.value) || 0;
@@ -315,10 +338,11 @@ window.registraVenditaMateriali = async () => {
         const tipoEl = document.getElementById('mat-tipo');
         const acqEl = document.getElementById('mat-acquirente');
         const qtyEl = document.getElementById('mat-qty');
-        const prUnEl = document.getElementById('mat-prezzo-un');
-        const pProEl = document.getElementById('mat-perc-propria'); // L'utente inserisce SOLO questa
+        const prUnEl = document.getElementById('mat-prezzo-un'); 
         const fotoEl = document.getElementById('mat-foto');
+        const tipoVenditaEl = document.getElementById('mat-tipo-vendita');
 
+        // Controllo validità
         if(!nomeEl || !tipoEl || !qtyEl || !prUnEl) {
             return vampireToast("Errore di interfaccia (campi mancanti).", "error");
         }
@@ -327,21 +351,28 @@ window.registraVenditaMateriali = async () => {
         const tipo = tipoEl.value.trim();
         const acquirente = acqEl ? acqEl.value.trim() : "N/D";
         const qty = parseFloat(qtyEl.value);
-        const prezzoUn = parseFloat(prUnEl.value);
+        const prezzoUn = parseFloat(prUnEl.value); 
 
-        if(!nome || !tipo || isNaN(qty) || isNaN(prezzoUn) || qty <= 0 || prezzoUn <= 0) {
-            return vampireToast("Inserisci tutti i dati obbligatori in modo corretto.", "error");
+        if(!nome || !tipo || isNaN(qty) || qty <= 0 || isNaN(prezzoUn) || prezzoUn <= 0) {
+            return vampireToast("Inserisci tutti i dati obbligatori e validi (incluso il prezzo).", "error");
         }
 
         const prezzoTot = qty * prezzoUn;
+        const tipoVendita = tipoVenditaEl ? tipoVenditaEl.value : "mercante";
         
-        // L'utente inserisce la % Propria. Il resto va alla Dinastia in automatico.
-        const percPro = parseFloat(pProEl ? pProEl.value : 0) || 0;
-        const percDin = 100 - percPro; // Calcolo automatico della % Dinastia
+        // --- LOGICA PERCENTUALE AGGIORNATA ---
+        // const percPro = 66.66666666666667; // Percentuale fissa precedente
+        let percPro = 66.66666666666667; // Default (Vendita Mercante)
+        
+        if (tipoVendita === 'materiale') {
+            percPro = 40; // Se è "Vendita Materiale", propria 40%
+        }
+        
+        const percDin = 100 - percPro; // Calcolo automatico della % Dinastia (33.3% per mercante, 60% per materiale)
+        // -------------------------------------
 
         const foto = (fotoEl && fotoEl.value) ? fotoEl.value : "#";
 
-        // Il calcolo indipendente della percentuale sempre e solo sul totale (prezzoTot)
         const vPro = (prezzoTot * percPro) / 100;
         const vDin = (prezzoTot * percDin) / 100;
 
@@ -350,27 +381,34 @@ window.registraVenditaMateriali = async () => {
             vampiro: nome,
             materiale: tipo,
             acquirente: acquirente,
+            tipoVendita: tipoVendita, 
             qty: qty,
             prezzoUn: prezzoUn,
             prezzoTot: prezzoTot,
             pPro: percPro,
-            pDin: percDin,   // Salviamo anche la % calcolata per storicità
+            pDin: percDin,   
             vPro: vPro,
-            vDin: vDin,      // Salviamo la quota della dinastia
+            vDin: vDin,      
             timestamp: Date.now(),
             dataStr: now.toLocaleDateString('it-IT'),
             ora: now.toLocaleTimeString('it-IT'),
             settimanaEtichetta: getWeekYearKey(now)
         });
 
-        vampireToast("Vendita materiali registrata.", "success");
+        vampireToast("Vendita registrata correttamente.", "success");
 
-        // Reset campi
-        [tipoEl, acqEl, qtyEl, prUnEl, pProEl, fotoEl].forEach(el => {
+        // Reset campi generici
+        [tipoEl, acqEl, qtyEl, fotoEl].forEach(el => {
             if(el) el.value = "";
         });
         const totEl = document.getElementById('mat-prezzo-tot');
         if(totEl) totEl.value = "";
+        
+        // Reset speciale per il tipo vendita e il prezzo
+        if(tipoVenditaEl) {
+            tipoVenditaEl.value = 'mercante'; // Torna al default
+            window.toggleTipoVendita(); // Forza l'aggiornamento grafico del campo prezzo
+        }
 
     } catch (error) {
         console.error("Errore salvataggio materiali: ", error);
@@ -403,8 +441,8 @@ window.renderMateriali = () => {
             <td>${m.acquirente || ''}</td>
             <td>${fmt(m.qty)}</td>
             <td style="color:var(--gold-dim)">${fmt(m.prezzoTot)} cr</td>
-            <td style="color:var(--withdraw-red)">${fmt(m.vDin)} cr <small>(${m.pDin || 0}%)</small></td>
-            <td style="color:var(--success-green)">${fmt(m.vPro)} cr <small>(${m.pPro || 0}%)</small></td>
+            <td style="color:var(--withdraw-red)">${fmt(m.vDin)} cr</td>
+            <td style="color:var(--success-green)">${fmt(m.vPro)} cr</td>
             <td><a href="${m.foto}" target="_blank" class="photo-link">FOTO</a></td>
         </tr>`).join('');
     
@@ -424,7 +462,6 @@ function aggiornaStatsMateriali() {
 window.renderAdminMateriali = () => {
     let container = document.getElementById('admin-materiali-container');
     if(!container) {
-        // Se non esiste nell'HTML, lo creo dinamicamente e lo aggiungo nella sezione admin
         const adminContent = document.getElementById('admin-content');
         if(adminContent) {
             const wrapper = document.createElement('div');
@@ -491,8 +528,8 @@ window.renderAdminMateriali = () => {
                             <td>${m.acquirente || ''}</td>
                             <td style="color: var(--gold-dim);">${fmt(m.qty)}</td>
                             <td>${fmt(m.prezzoTot)}</td>
-                            <td>${fmt(m.vPro)} <small>(${m.pPro || 0}%)</small></td>
-                            <td>${fmt(m.vDin)} <small>(${m.pDin || 0}%)</small></td>
+                            <td>${fmt(m.vPro)} cr</td>
+                            <td>${fmt(m.vDin)} cr</td>
                             <td><button class="btn-delete" onclick="window.adminDeleteMat('${m.id}')">X</button></td>
                         </tr>`).join('')}
                     </tbody>
