@@ -199,25 +199,32 @@
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; margin-top: 10px;">
-                    
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 10px; align-items: end;">
                     <div class="form-group">
                         <label>Tipo Vendita</label>
                         <select id="mat-tipo-vendita" onchange="window.toggleTipoVendita()">
-                            <option value="mercante">Vendita Mercante (75 cr fisso)</option>
+                            <option value="mercante-75">Vendita Mercante (75 cr fisso)</option>
+                            <option value="mercante-100">Vendita Mercante (100 cr fisso)</option>
                             <option value="materiale">Vendita Materiale (Prezzo Libero)</option>
                         </select>
+                    </div>
+                    <div class="form-group" id="container-accordo">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding-bottom: 12px; margin: 0;">
+                            <input type="checkbox" id="mat-accordo" style="width: 18px; height: 18px; margin: 0;">
+                            <span style="font-size: 0.9rem; color: var(--gold-accent);">Accordo (60% a te)</span>
+                        </label>
                     </div>
                     <div class="form-group">
                         <label>Quantità</label>
                         <input type="number" id="mat-qty" placeholder="0" oninput="window.updateMatTot()">
                     </div>
-                    
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
                     <div class="form-group">
                         <label>Prezzo Unitario (cr)</label>
                         <input type="number" id="mat-prezzo-un" value="75" readonly style="opacity: 0.7;" oninput="window.updateMatTot()">
                     </div>
-                    
                     <div class="form-group">
                         <label>Totale Calcolato (cr)</label>
                         <input type="number" id="mat-prezzo-tot" placeholder="0" readonly style="background: rgba(255,255,255,0.05); color: var(--gold-accent); font-weight: bold;">
@@ -329,11 +336,11 @@
                     <div class="calc-item"><span>Numero Transazioni</span><span id="calc-res-mat-count" style="color: var(--gold-dim);">0</span></div>
                     <div class="calc-item"><span>Crediti Totali</span><span id="calc-res-mat-tot" style="color: var(--gold-dim);">0 cr</span></div>
                     <div class="calc-item" style="border-top: 1px dashed #444; margin-top: 5px; padding-top: 5px;">
-                        <span style="color: var(--success-green);">Quota Propria (Variabile)</span>
+                        <span style="color: var(--success-green);">Quota Propria</span>
                         <span id="calc-res-mat-vamp" style="color: var(--success-green);">0 cr</span>
                     </div>
                     <div class="calc-item">
-                        <span style="color: var(--withdraw-red);">Tributo Dinastia (Variabile)</span>
+                        <span style="color: var(--withdraw-red);">Tributo Dinastia</span>
                         <span id="calc-res-mat-din" style="color: var(--withdraw-red);">0 cr</span>
                     </div>
 

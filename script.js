@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// CONFIGURAZIONE FIREBASE
+// --- CONFIGURAZIONE FIREBASE ---
 const firebaseConfig = {
   apiKey: "AIzaSyAHm6VlxgUKnzZAj26EpgS6OWf21zDZ8vw",
   authDomain: "vampiri-horde.firebaseapp.com",
@@ -17,7 +17,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// VARIABILI GLOBALI
+// --- VARIABILI GLOBALI ---
 let vendite = [];
 let venditeMateriali = []; 
 let inventarioDati = [];
@@ -36,7 +36,7 @@ let squadraConquistaTemp = [];
 
 const VALORE_UNITARIO = 30;
 
-// UTILS
+// --- UTILS ---
 const fmt = (n) => {
     if (n === undefined || n === null) return "0";
     return new Intl.NumberFormat('it-IT').format(n);
@@ -58,9 +58,7 @@ const vampireToast = (msg, icon = 'info') => {
 };
 window.vampireToast = vampireToast;
 
-// --- GESTIONE AUTENTICAZIONE (FIREBASE AUTH) ---
-
-// Login Globale (Vampiri)
+// --- GESTIONE AUTENTICAZIONE ---
 window.unlockSite = async () => {
     const passInput = document.getElementById('global-pass').value;
     const email = "vampiri@horde.it";
@@ -75,7 +73,6 @@ window.unlockSite = async () => {
     }
 };
 
-// Logout Globale (Tasto opzionale nella UI)
 window.logoutVampiro = async () => {
     const res = await Swal.fire({
         title: 'Abbandonare la sessione?',
@@ -91,7 +88,6 @@ window.logoutVampiro = async () => {
     }
 };
 
-// Login Gestore (Admin)
 window.checkAccess = async () => {
     const passInput = document.getElementById('admin-pass').value;
     const email = "vampiri.gestore@horde.it";
@@ -100,7 +96,6 @@ window.checkAccess = async () => {
 
     try {
         await signInWithEmailAndPassword(auth, email, passInput);
-        // Nascondiamo subito il login per evitare il "vuoto"
         document.getElementById('login-container-gestione').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
         vampireToast("Accesso Gestore garantito.", "success");
@@ -109,13 +104,11 @@ window.checkAccess = async () => {
     }
 };
 
-// Monitoraggio dello stato di autenticazione
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        startFirestoreListeners(); // Avviamo il recupero dati
+        startFirestoreListeners(); 
 
         if (user.email === "vampiri.gestore@horde.it") {
-            // Logica Admin
             document.getElementById('global-lock').style.display = 'none';
             document.getElementById('login-container-gestione').style.display = 'none';
             document.getElementById('admin-content').style.display = 'block';
@@ -123,18 +116,16 @@ onAuthStateChanged(auth, (user) => {
             window.showSection('gestione'); 
             refreshAdminUI();
         } else if (user.email === "vampiri@horde.it") {
-            // Logica Utente Base
             document.getElementById('global-lock').style.display = 'none';
             document.getElementById('admin-content').style.display = 'none';
             window.showSection('generale');
         }
     } else {
-        // Se non loggato
         document.getElementById('global-lock').style.display = 'flex';
         document.getElementById('admin-content').style.display = 'none';
         const loginGest = document.getElementById('login-container-gestione');
         if(loginGest) {
-            loginGest.style.display = 'flex'; // Usiamo flex per la centratura CSS
+            loginGest.style.display = 'flex';
             loginGest.style.justifyContent = 'center';
             loginGest.style.alignItems = 'center';
         }
@@ -185,7 +176,7 @@ window.showSection = (id) => {
     window.scrollTo(0, 0); 
 };
 
-// --- GESTIONE DINAMICA (COMUNICAZIONI/DOC) ---
+// --- GESTIONE DINAMICA ---
 window.addDinamico = async (col) => {
     const pref = col === 'comunicazioni' ? 'adm-com-' : 'adm-doc-';
     const titolo = document.getElementById(pref + 'titolo').value.trim();
@@ -298,25 +289,32 @@ function popolaFiltroMateriali() {
 }
 
 // --- LOGICA VENDITA MATERIALI ---
-
-// Gestisce il blocco/sblocco del campo prezzo
 window.toggleTipoVendita = () => {
     const tipo = document.getElementById('mat-tipo-vendita').value;
     const prUnEl = document.getElementById('mat-prezzo-un');
+    const accordoContainer = document.getElementById('mat-accordo-container');
+    const accordoCheckbox = document.getElementById('mat-accordo');
     
     if (prUnEl) {
-        if (tipo === 'mercante') {
+        if (tipo === 'mercante-75') {
             prUnEl.value = 75;
             prUnEl.readOnly = true;
             prUnEl.style.opacity = "0.7";
+            if (accordoContainer) accordoContainer.style.display = "block";
+        } else if (tipo === 'mercante-100') {
+            prUnEl.value = 100;
+            prUnEl.readOnly = true;
+            prUnEl.style.opacity = "0.7";
+            if (accordoContainer) accordoContainer.style.display = "block";
         } else {
             prUnEl.value = "";
             prUnEl.readOnly = false;
             prUnEl.style.opacity = "1";
             prUnEl.placeholder = "Inserisci Prezzo";
+            if (accordoContainer) accordoContainer.style.display = "none";
+            if (accordoCheckbox) accordoCheckbox.checked = false;
         }
     }
-    // Ricalcola il totale per sicurezza
     window.updateMatTot();
 };
 
@@ -341,8 +339,8 @@ window.registraVenditaMateriali = async () => {
         const prUnEl = document.getElementById('mat-prezzo-un'); 
         const fotoEl = document.getElementById('mat-foto');
         const tipoVenditaEl = document.getElementById('mat-tipo-vendita');
+        const accordoCheckbox = document.getElementById('mat-accordo');
 
-        // Controllo validità
         if(!nomeEl || !tipoEl || !qtyEl || !prUnEl) {
             return vampireToast("Errore di interfaccia (campi mancanti).", "error");
         }
@@ -354,22 +352,20 @@ window.registraVenditaMateriali = async () => {
         const prezzoUn = parseFloat(prUnEl.value); 
 
         if(!nome || !tipo || isNaN(qty) || qty <= 0 || isNaN(prezzoUn) || prezzoUn <= 0) {
-            return vampireToast("Inserisci tutti i dati obbligatori e validi (incluso il prezzo).", "error");
+            return vampireToast("Inserisci tutti i dati obbligatori e validi.", "error");
         }
 
         const prezzoTot = qty * prezzoUn;
-        const tipoVendita = tipoVenditaEl ? tipoVenditaEl.value : "mercante";
+        const tipoVendita = tipoVenditaEl ? tipoVenditaEl.value : "mercante-75";
+        const isAccordo = accordoCheckbox ? accordoCheckbox.checked : false;
         
-        // --- LOGICA PERCENTUALE AGGIORNATA ---
-        // const percPro = 66.66666666666667; // Percentuale fissa precedente
-        let percPro = 66.66666666666667; // Default (Vendita Mercante)
-        
-        if (tipoVendita === 'materiale') {
-            percPro = 40; // Se è "Vendita Materiale", propria 40%
+        let percPro = 40; 
+
+        if ((tipoVendita === 'mercante-75' || tipoVendita === 'mercante-100') && isAccordo) {
+            percPro = 60; 
         }
         
-        const percDin = 100 - percPro; // Calcolo automatico della % Dinastia (33.3% per mercante, 60% per materiale)
-        // -------------------------------------
+        const percDin = 100 - percPro; 
 
         const foto = (fotoEl && fotoEl.value) ? fotoEl.value : "#";
 
@@ -382,6 +378,7 @@ window.registraVenditaMateriali = async () => {
             materiale: tipo,
             acquirente: acquirente,
             tipoVendita: tipoVendita, 
+            accordo: isAccordo,
             qty: qty,
             prezzoUn: prezzoUn,
             prezzoTot: prezzoTot,
@@ -397,17 +394,15 @@ window.registraVenditaMateriali = async () => {
 
         vampireToast("Vendita registrata correttamente.", "success");
 
-        // Reset campi generici
         [tipoEl, acqEl, qtyEl, fotoEl].forEach(el => {
             if(el) el.value = "";
         });
         const totEl = document.getElementById('mat-prezzo-tot');
         if(totEl) totEl.value = "";
         
-        // Reset speciale per il tipo vendita e il prezzo
         if(tipoVenditaEl) {
-            tipoVenditaEl.value = 'mercante'; // Torna al default
-            window.toggleTipoVendita(); // Forza l'aggiornamento grafico del campo prezzo
+            tipoVenditaEl.value = 'mercante-75';
+            window.toggleTipoVendita(); 
         }
 
     } catch (error) {
@@ -458,7 +453,7 @@ function aggiornaStatsMateriali() {
     if(document.getElementById('mat-tot-count-sett')) document.getElementById('mat-tot-count-sett').innerText = curr.length;
 }
 
-// Logica inserimento visualizzazione per gestione (Admin)
+// --- LOGICA ADMIN MATERIALI ---
 window.renderAdminMateriali = () => {
     let container = document.getElementById('admin-materiali-container');
     if(!container) {
@@ -836,8 +831,7 @@ function aggiornaStatsConquiste() {
     if(document.getElementById('admin-stat-conquista-sconfitte')) document.getElementById('admin-stat-conquista-sconfitte').innerText = fail;
 }
 
-// --- LOGICA ADMIN (RESA) ---
-
+// --- LOGICA ADMIN ---
 window.renderAdminDungeon = () => {
     const container = document.getElementById('admin-dungeon-body');
     if(!container) return;
@@ -1329,7 +1323,6 @@ function getWeekRangeLabel(weekKey) {
 }
 
 function aggiornaStats() {
-    // Statistiche Carbonio (Esistenti)
     const currentWeekKey = getWeekYearKey(new Date());
     const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
     const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + (curr.dinastia || 0), 0);
@@ -1347,7 +1340,6 @@ function aggiornaStats() {
     if(document.getElementById('admin-tot-ekaton-storico')) document.getElementById('admin-tot-ekaton-storico').innerText = fmt(Math.floor(ekatonStorico)) + " cr";
     if(document.getElementById('admin-tot-count-storico')) document.getElementById('admin-tot-count-storico').innerText = vendite.length;
 
-    // Statistiche Materiali
     const matQtyStorico = venditeMateriali.reduce((acc, curr) => acc + (curr.qty || 0), 0);
     const matCreditiStorico = venditeMateriali.reduce((acc, curr) => acc + (curr.prezzoTot || 0), 0);
     const matDinastiaStorico = venditeMateriali.reduce((acc, curr) => acc + (curr.vDin || 0), 0);
@@ -1391,7 +1383,6 @@ window.vampireSecretUnlock = async () => {
 };
 
 // --- INITIALIZATION & SNAPSHOTS ---
-
 function startFirestoreListeners() {
     onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
     onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
@@ -1408,9 +1399,9 @@ function startFirestoreListeners() {
 
     onSnapshot(collection(db, "vendite_materiali"), (snapshot) => { 
         venditeMateriali = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        popolaFiltroMateriali(); // Aggiorniamo la lista dei filtri dinamicamente
+        popolaFiltroMateriali(); 
         window.renderMateriali(); 
-        aggiornaStats(); // <--- INSERITO QUI (Questo sblocca l'aggiornamento in tempo reale nell'area admin)
+        aggiornaStats(); 
         if (document.getElementById('admin-content').style.display === 'block') {
             if(typeof window.renderAdminMateriali === 'function') window.renderAdminMateriali(); 
         }
@@ -1453,25 +1444,20 @@ function startFirestoreListeners() {
 }
 
 // --- PROTEZIONE INTERFACCIA ---
-
-// 1. Blocca il tasto destro
 document.addEventListener('contextmenu', event => event.preventDefault());
 
-// 2. Blocca scorciatoie da tastiera comuni per ispeziona
 document.onkeydown = function(e) {
-    if (e.keyCode == 123) return false; // F12
-    if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
-    if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Ctrl+Shift+C
-    if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
-    if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U (Visualizza sorgente)
+    if (e.keyCode == 123) return false; 
+    if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
+    if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; 
+    if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
+    if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
 };
 
-// 3. Debugger Loop: se aprono la console, il sito rallenta drasticamente
 setInterval(function() {
     debugger;
 }, 100);
 
-// Modifichiamo il controllo dell'autenticazione per avviare i listener
 onAuthStateChanged(auth, (user) => {
     if (user) {
         startFirestoreListeners();
@@ -1481,7 +1467,6 @@ onAuthStateChanged(auth, (user) => {
             document.getElementById('login-container-gestione').style.display = 'none';
             document.getElementById('admin-content').style.display = 'block';
             
-            // Re-indirizzamento istantaneo per evitare il vuoto
             window.showSection('gestione'); 
             refreshAdminUI();
         } else if (user.email === "vampiri@horde.it") {
@@ -1490,7 +1475,6 @@ onAuthStateChanged(auth, (user) => {
             window.showSection('generale');
         }
     } else {
-        // Se non loggato, mostra i contenitori centrati
         document.getElementById('global-lock').style.display = 'flex';
         document.getElementById('admin-content').style.display = 'none';
         const gestLogin = document.getElementById('login-container-gestione');
