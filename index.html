@@ -105,7 +105,7 @@
         
         <section id="generale" class="section active">
             <div class="vamp-card" style="margin-bottom: 20px;">
-                <h2 style="text-align: center;">🩸 Classifiche Dinastia</h2>
+                <h2 style="text-align: center;">🎖️ Classifiche Dinastia</h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
                     <div>
                         <h4 style="font-size: 0.7rem; color: var(--gold-accent); text-transform: uppercase; margin-bottom: 15px; text-align: center;">Top Settimana</h4>
@@ -161,7 +161,7 @@
             </div>
 
             <div class="vamp-card">
-                <h2>Registra Vendita</h2>
+                <h2>💲Registra Vendita</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
                     <div class="form-group">
                         <label>Vampiro</label>
@@ -227,7 +227,7 @@
             </div>
 
             <div class="vamp-card">
-                <h2>Registra Vendita Materiali</h2>
+                <h2>⚒️ Registra Vendita Materiali</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 15px;">
                     <div class="form-group">
                         <label>Vampiro</label>
@@ -321,7 +321,7 @@
 
         <section id="saldo" class="section">
             <div class="vamp-card">
-                <h2>Gestione Crediti Dinastia</h2>
+                <h2>💰 Gestione Crediti Dinastia</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>Vampiro Operante</label>
@@ -356,7 +356,7 @@
 
         <section id="calcolo" class="section">
             <div class="vamp-card" style="max-width: 600px; margin: 0 auto;">
-                <h2>Controllo vendite</h2>
+                <h2>🔍 Controllo vendite</h2>
                 <div class="form-group">
                     <label>Nome del Vampiro</label>
                     <select id="calc-search-name" class="vampiro-select-list"></select>
@@ -405,7 +405,7 @@
 
         <section id="inventario" class="section">
             <div class="vamp-card">
-                <h2>Accesso Rapido Depositi</h2>
+                <h2>📦 Accesso Rapido Depositi</h2>
                 <p style="font-size: 0.7rem; color: var(--gold-dim); margin-bottom: 20px; text-transform: uppercase;">Clicca su un oggetto sotto per registrarne il movimento.</p>
                 <div class="form-group" style="max-width: 300px;">
                     <label>Tuo Nome (Vampiro)</label>
@@ -445,7 +445,7 @@
             </div>
 
             <div class="vamp-card">
-                <h2>Registra Incursione Dungeon</h2>
+                <h2>⚔️ Registra Incursione Dungeon</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>Aggiungi Membro Squadra</label>
@@ -516,7 +516,7 @@
             </div>
 
             <div class="vamp-card">
-                <h2>Registra Punto Conquista</h2>
+                <h2>🏆 Registra Punto Conquista</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>Aggiungi Membro Squadra</label>
@@ -947,6 +947,59 @@
             // Mostra di nuovo il menu a griglia
             document.getElementById('admin-dashboard-menu').style.display = 'grid';
         };
+
+        document.addEventListener("DOMContentLoaded", function() {
+    // Funzione sicura per cercare il testo senza rompere l'HTML o gli altri script
+    function highlightNoah(element) {
+        // Se l'elemento ha già la classe, lo saltiamo
+        if (element.classList && element.classList.contains('name-noah')) return;
+        
+        // Creiamo un array dei nodi figli per evitare loop infiniti durante la modifica
+        const childNodes = Array.from(element.childNodes);
+        
+        for (let node of childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                // Usiamo una regex per trovare esattamente la parola isolata (case-insensitive)
+                if (/\bNoah\b/i.test(node.textContent)) {
+                    let fragment = document.createDocumentFragment();
+                    let parts = node.textContent.split(/(\bNoah\b)/i);
+                    
+                    parts.forEach(part => {
+                        if (part.toLowerCase() === 'noah') {
+                            let span = document.createElement('span');
+                            span.className = 'name-noah';
+                            span.textContent = part; // Mantiene le maiuscole/minuscole originali
+                            fragment.appendChild(span);
+                        } else if (part) {
+                            fragment.appendChild(document.createTextNode(part));
+                        }
+                    });
+                    element.replaceChild(fragment, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                // Va più a fondo negli altri elementi
+                highlightNoah(node);
+            }
+        }
+    }
+
+    // 1. Eseguiamo la funzione subito al primo caricamento
+    highlightNoah(document.body);
+
+    // 2. "MutationObserver" - Resta in agguato per i contenuti dinamici (es. liste che si aggiornano)
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((addedNode) => {
+                if (addedNode.nodeType === Node.ELEMENT_NODE) {
+                    highlightNoah(addedNode);
+                }
+            });
+        });
+    });
+
+    // Attiviamo l'osservatore su tutto il body
+    observer.observe(document.body, { childList: true, subtree: true });
+});
     </script>
 </body>
 </html>

@@ -9,12 +9,14 @@
     --text-dim: #a0a0a0;
     --success-green: #2ecc71;
     --withdraw-red: #e74c3c;
+    --noah-purple: #9b59b6; /* Nuova variabile: Viola per Noah */
     --glass-bg: rgba(18, 18, 18, 0.75);
     --glass-border: rgba(197, 160, 89, 0.25);
     --glass-border-hover: rgba(139, 0, 0, 0.6);
     --shadow-premium: 0 8px 32px rgba(0, 0, 0, 0.9), 0 0 20px rgba(139, 0, 0, 0.05);
     --glow-gold: 0 0 20px rgba(197, 160, 89, 0.3);
     --glow-blood: 0 0 25px rgba(139, 0, 0, 0.4);
+    --glow-noah: 0 0 15px rgba(155, 89, 182, 0.5); /* Nuova variabile: Bagliore viola */
     --nav-height: 72px;
     --transition-smooth: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -549,13 +551,13 @@ thead th:first-child, td:first-child, thead th:nth-child(2), td:nth-child(2) { t
 
 .general-grid { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 25px; }
 .coming-soon-card { 
-    background: repeating-linear-gradient(45deg, rgba(25, 25, 25, 0.8), rgba(25, 25, 25, 0.8) 10px, rgba(15, 15, 15, 0.8) 10px, rgba(15, 15, 15, 0.8) 20px);
+    background: transparent(45deg, rgba(247, 0, 0, 0), rgba(25, 25, 25, 0.8) 10px, rgba(15, 15, 15, 0.8) 10px, rgba(15, 15, 15, 0.8) 20px);
     border: 1px solid #333; padding: 35px 25px;
     border-radius: 0; text-align: center; min-height: 220px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; flex: 1; min-width: 280px; max-width: 350px;
     box-shadow: inset 0 0 30px rgba(0,0,0,0.8); transition: var(--transition-smooth);
 }
 .coming-soon-card:hover { border-color: var(--gold-dim); }
-.coming-soon-card h3 { color: var(--text-light); font-size: 1.1rem; margin-bottom: 15px; letter-spacing: 2px; }
+.coming-soon-card h3 { color: var(--text-light); font-size: 1.1rem; margin-bottom: 15px; letter-spacing: 2px; color: #c5a059;}
 .coming-soon-card p { font-size: 0.75rem; color: #777; }
 
 .dyn-item { margin-bottom: 15px; padding: 12px 15px; border-radius: 0; background: transparent; border-left: 2px solid var(--gold-dim); border-right: 2px solid var(--blood-red); text-align: left; transition: var(--transition-smooth); }
@@ -597,3 +599,10 @@ thead th:first-child, td:first-child, thead th:nth-child(2), td:nth-child(2) { t
 footer { padding: 50px 20px; text-align: center; font-size: 0.7rem; color: #666; letter-spacing: 2px; text-transform: uppercase; border-top: 1px dashed rgba(255,255,255,0.05); margin-top: 40px; }
 footer strong { color: var(--gold-accent); font-weight: 700; transition: var(--transition-smooth); }
 footer:hover strong { color: var(--blood-red); }
+
+/* --- HIGHLIGHT NOME NOAH --- */
+.name-noah {
+    color: var(--noah-purple) !important;
+    font-weight: 800;
+    text-shadow: var(--glow-noah);
+}
