@@ -948,58 +948,6 @@
             document.getElementById('admin-dashboard-menu').style.display = 'grid';
         };
 
-        document.addEventListener("DOMContentLoaded", function() {
-    // Funzione sicura per cercare il testo senza rompere l'HTML o gli altri script
-    function highlightNoah(element) {
-        // Se l'elemento ha già la classe, lo saltiamo
-        if (element.classList && element.classList.contains('name-noah')) return;
-        
-        // Creiamo un array dei nodi figli per evitare loop infiniti durante la modifica
-        const childNodes = Array.from(element.childNodes);
-        
-        for (let node of childNodes) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                // Usiamo una regex per trovare esattamente la parola isolata (case-insensitive)
-                if (/\bNoah\b/i.test(node.textContent)) {
-                    let fragment = document.createDocumentFragment();
-                    let parts = node.textContent.split(/(\bNoah\b)/i);
-                    
-                    parts.forEach(part => {
-                        if (part.toLowerCase() === 'noah') {
-                            let span = document.createElement('span');
-                            span.className = 'name-noah';
-                            span.textContent = part; // Mantiene le maiuscole/minuscole originali
-                            fragment.appendChild(span);
-                        } else if (part) {
-                            fragment.appendChild(document.createTextNode(part));
-                        }
-                    });
-                    element.replaceChild(fragment, node);
-                }
-            } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
-                // Va più a fondo negli altri elementi
-                highlightNoah(node);
-            }
-        }
-    }
-
-    // 1. Eseguiamo la funzione subito al primo caricamento
-    highlightNoah(document.body);
-
-    // 2. "MutationObserver" - Resta in agguato per i contenuti dinamici (es. liste che si aggiornano)
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((addedNode) => {
-                if (addedNode.nodeType === Node.ELEMENT_NODE) {
-                    highlightNoah(addedNode);
-                }
-            });
-        });
-    });
-
-    // Attiviamo l'osservatore su tutto il body
-    observer.observe(document.body, { childList: true, subtree: true });
-});
     </script>
 </body>
 </html>
