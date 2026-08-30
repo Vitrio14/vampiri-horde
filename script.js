@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, deleteDoc, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // --- CONFIGURAZIONE FIREBASE ---
@@ -23,7 +23,6 @@ let venditeMateriali = [];
 let inventarioDati = [];
 let logs = [];
 let saldoLogs = [];
-let morsi = []; 
 let dungeonDati = [];
 let conquisteDati = [];
 let saldoGlobale = 0;
@@ -34,7 +33,27 @@ let documenti = [];
 let squadraDungeonTemp = [];
 let squadraConquistaTemp = [];
 
+// Utente loggato corrente (null se non autenticato)
+let currentUser = null; // { nome, grado, codice, password, permessi: [], isAdmin: false }
+let listenersStarted = false;
+
 const VALORE_UNITARIO = 30;
+
+// Sezioni disponibili e mapping nav
+const SEZIONI = {
+    generale: { id: 'generale', label: 'Generale' },
+    vendite: { id: 'vendite', label: 'Vendite' },
+    materiali: { id: 'materiali', label: 'Vendita Materiali' },
+    saldo: { id: 'saldo', label: 'Saldo' },
+    calcolo: { id: 'calcolo', label: 'Calcolo' },
+    inventario: { id: 'inventario', label: 'Inventario' },
+    dungeon: { id: 'dungeon', label: 'Dungeon' },
+    conquiste: { id: 'conquiste', label: 'Conquiste' },
+    gestione: { id: 'gestione', label: 'Gestione' },
+    'conquiste-ext': { id: 'conquiste-ext', label: '⚔️' },
+    foto: { id: 'foto', label: 'Foto' },
+    manuale: { id: 'manuale', label: 'Manuale' }
+};
 
 // --- UTILS ---
 const fmt = (n) => {
@@ -60,16 +79,67 @@ window.vampireToast = vampireToast;
 
 // --- GESTIONE AUTENTICAZIONE ---
 window.unlockSite = async () => {
-    const passInput = document.getElementById('global-pass').value;
-    const email = "vampiri@horde.it";
+    const codice = (document.getElementById('global-codice')?.value || "").trim();
+    const passInput = (document.getElementById('global-pass')?.value || "").trim();
     
+    if(!codice || codice.length !== 4 || !/^\d{4}$/.test(codice)) {
+        return vampireToast("Inserire un codice a 4 cifre valido.", "error");
+    }
     if(!passInput) return vampireToast("Inserire la password per procedere.", "error");
 
     try {
-        await signInWithEmailAndPassword(auth, email, passInput);
-        vampireToast("Accesso alla Dinastia consentito.", "success");
+        // Cerca membro con quel codice
+        const q = query(collection(db, "membri"), where("codice", "==", codice));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) {
+            return vampireToast("Accesso negato. Codice non riconosciuto.", "error");
+        }
+
+        let found = null;
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.password === passInput) {
+                found = { id: d.id, ...data };
+            }
+        });
+
+        if (!found) {
+            return vampireToast("Accesso negato. Password errata.", "error");
+        }
+
+        // Login membro riuscito
+        currentUser = {
+            nome: found.nome,
+            grado: found.grado || "",
+            codice: found.codice,
+            password: found.password,
+            permessi: Array.isArray(found.permessi) ? found.permessi : ["generale"],
+            isAdmin: false
+        };
+
+        // Salva sessione leggera
+        try { localStorage.setItem('vamp_session', JSON.stringify({ codice, ts: Date.now() })); } catch(e){}
+
+        document.getElementById('global-lock').style.display = 'none';
+        document.getElementById('admin-content').style.display = 'none';
+        
+        if (!listenersStarted) {
+            startFirestoreListeners();
+            listenersStarted = true;
+        }
+        
+        applyPermissions();
+        const firstPerm = currentUser.permessi.find(p => SEZIONI[p] && p !== 'gestione' && !p.includes('ext') && p !== 'foto' && p !== 'manuale') || 'generale';
+        window.showSection(firstPerm);
+        vampireToast(`Benvenuto, ${currentUser.nome}.`, "success");
+        
+        // Pulisci campi
+        document.getElementById('global-codice').value = "";
+        document.getElementById('global-pass').value = "";
     } catch (error) {
-        vampireToast("Accesso negato. Il sigillo resta intatto.", "error");
+        console.error(error);
+        vampireToast("Errore durante l'accesso.", "error");
     }
 };
 
@@ -83,7 +153,10 @@ window.logoutVampiro = async () => {
         color: '#fff'
     });
     if(res.isConfirmed) {
-        await signOut(auth);
+        currentUser = null;
+        try { localStorage.removeItem('vamp_session'); } catch(e){}
+        // Se era admin Firebase, esci anche da lì
+        try { await signOut(auth); } catch(e){}
         location.reload();
     }
 };
@@ -96,44 +169,136 @@ window.checkAccess = async () => {
 
     try {
         await signInWithEmailAndPassword(auth, email, passInput);
-        document.getElementById('login-container-gestione').style.display = 'none';
-        document.getElementById('admin-content').style.display = 'block';
+        // onAuthStateChanged gestirà il resto
         vampireToast("Accesso Gestore garantito.", "success");
     } catch (error) {
         vampireToast("Credenziali Gestore errate.", "error");
     }
 };
 
+// --- Switch tra login membro / gestore sulla schermata principale ---
+window.mostraLoginGestore = () => {
+    document.getElementById('login-membro-box').style.display = 'none';
+    document.getElementById('login-gestore-box').style.display = 'block';
+    setTimeout(() => document.getElementById('global-admin-pass')?.focus(), 50);
+};
+
+window.mostraLoginMembro = () => {
+    document.getElementById('login-gestore-box').style.display = 'none';
+    document.getElementById('login-membro-box').style.display = 'block';
+    setTimeout(() => document.getElementById('global-codice')?.focus(), 50);
+};
+
+window.unlockGestore = async () => {
+    const passInput = (document.getElementById('global-admin-pass')?.value || "").trim();
+    const email = "vampiri.gestore@horde.it";
+
+    if(!passInput) return vampireToast("Inserire la password gestore.", "error");
+
+    try {
+        await signInWithEmailAndPassword(auth, email, passInput);
+        // onAuthStateChanged si occupa del resto (mostra pannello admin)
+        vampireToast("Accesso Gestore garantito.", "success");
+    } catch (error) {
+        vampireToast("Credenziali Gestore errate.", "error");
+    }
+};
+
+// Applica visibilità nav e form in base ai permessi
+function applyPermissions() {
+    if (!currentUser) return;
+
+    const isAdmin = currentUser.isAdmin;
+    const perm = currentUser.permessi || [];
+
+    // Nav links interni
+    document.querySelectorAll('.nav-link[onclick]').forEach(link => {
+        const onclick = link.getAttribute('onclick') || "";
+        let sectionId = null;
+        if (onclick.includes("showSection('")) {
+            sectionId = onclick.match(/showSection\('([^']+)'\)/)?.[1];
+        }
+        if (sectionId === 'gestione') {
+            link.style.display = isAdmin ? '' : 'none';
+        } else if (sectionId) {
+            link.style.display = (isAdmin || perm.includes(sectionId)) ? '' : 'none';
+        }
+    });
+
+    // Link esterni
+    document.querySelectorAll('.nav-links a.nav-link').forEach(a => {
+        const href = a.getAttribute('href') || "";
+        if (href.includes('conquiste-vampiri')) {
+            a.style.display = (isAdmin || perm.includes('conquiste-ext')) ? '' : 'none';
+        } else if (href.includes('postimages')) {
+            a.style.display = (isAdmin || perm.includes('foto')) ? '' : 'none';
+        } else if (href.includes('docs.google.com')) {
+            a.style.display = (isAdmin || perm.includes('manuale')) ? '' : 'none';
+        }
+    });
+
+    // Nascondi i select "Vampiro" personali se non admin (usa currentUser automaticamente)
+    const personalSelectIds = ['vamp-nome', 'mat-vamp-nome', 'saldo-nome', 'inv-user-name', 'calc-search-name'];
+    personalSelectIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const formGroup = el.closest('.form-group');
+            if (formGroup) {
+                formGroup.style.display = isAdmin ? '' : 'none';
+            }
+            // Se non admin e c'è currentUser, pre-setta il valore (per sicurezza)
+            if (!isAdmin && currentUser.nome) {
+                el.value = currentUser.nome;
+            }
+        }
+    });
+
+    // Per calcolo: se non admin, forziamo il nome e nascondiamo il periodo se vuoi, ma lasciamo
+    if (!isAdmin && document.getElementById('calc-search-name')) {
+        document.getElementById('calc-search-name').value = currentUser.nome;
+    }
+}
+
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        startFirestoreListeners(); 
-
         if (user.email === "vampiri.gestore@horde.it") {
+            currentUser = {
+                nome: "GESTORE",
+                grado: "Originario",
+                isAdmin: true,
+                permessi: Object.keys(SEZIONI)
+            };
             document.getElementById('global-lock').style.display = 'none';
             document.getElementById('login-container-gestione').style.display = 'none';
             document.getElementById('admin-content').style.display = 'block';
             
+            if (!listenersStarted) {
+                startFirestoreListeners();
+                listenersStarted = true;
+            }
+            
+            applyPermissions();
             window.showSection('gestione'); 
             refreshAdminUI();
-        } else if (user.email === "vampiri@horde.it") {
-            document.getElementById('global-lock').style.display = 'none';
-            document.getElementById('admin-content').style.display = 'none';
-            window.showSection('generale');
         }
+        // Non gestiamo più vampiri@horde.it
     } else {
-        document.getElementById('global-lock').style.display = 'flex';
-        document.getElementById('admin-content').style.display = 'none';
-        const loginGest = document.getElementById('login-container-gestione');
-        if(loginGest) {
-            loginGest.style.display = 'flex';
-            loginGest.style.justifyContent = 'center';
-            loginGest.style.alignItems = 'center';
+        // Solo se non c'è currentUser membro
+        if (!currentUser || currentUser.isAdmin) {
+            document.getElementById('global-lock').style.display = 'flex';
+            document.getElementById('admin-content').style.display = 'none';
+            const loginGest = document.getElementById('login-container-gestione');
+            if(loginGest) {
+                loginGest.style.display = 'flex';
+                loginGest.style.justifyContent = 'center';
+                loginGest.style.alignItems = 'center';
+            }
+            currentUser = null;
         }
     }
 });
 
 function refreshAdminUI() {
-    window.renderAdminMorsi(); 
     window.renderAdminTable(); 
     window.renderArchivioGestione(); 
     window.renderAdminLogs(); 
@@ -159,6 +324,8 @@ window.logoutAdmin = async () => {
     });
     
     if(res.isConfirmed) {
+        currentUser = null;
+        try { localStorage.removeItem('vamp_session'); } catch(e){}
         await signOut(auth);
         vampireToast("Sessione chiusa correttamente.", "info");
         setTimeout(() => { location.reload(); }, 800);
@@ -238,11 +405,46 @@ function renderDinamici() {
 window.aggiungiVampiro = async () => {
     const nome = document.getElementById('admin-vamp-nome').value.trim();
     const grado = document.getElementById('admin-vamp-grado').value.trim();
+    const codice = (document.getElementById('admin-vamp-codice')?.value || "").trim();
+    const password = (document.getElementById('admin-vamp-password')?.value || "").trim();
+    
     if(!nome || !grado) return vampireToast("Inserisci nome e grado", "error");
-    await setDoc(doc(db, "membri", nome), { nome, grado });
+    if(codice && (codice.length !== 4 || !/^\d{4}$/.test(codice))) {
+        return vampireToast("Il codice deve essere esattamente 4 cifre numeriche.", "error");
+    }
+    
+    // Raccogli permessi
+    const permessi = [];
+    document.querySelectorAll('.perm-check:checked').forEach(cb => permessi.push(cb.value));
+    if(permessi.length === 0) permessi.push('generale');
+
+    // Controlla unicità codice se fornito
+    if(codice) {
+        const q = query(collection(db, "membri"), where("codice", "==", codice));
+        const snap = await getDocs(q);
+        let conflict = false;
+        snap.forEach(d => {
+            if(d.id !== nome) conflict = true;
+        });
+        if(conflict) return vampireToast("Questo codice è già assegnato ad un altro membro.", "error");
+    }
+
+    const data = { nome, grado, permessi };
+    if(codice) data.codice = codice;
+    if(password) data.password = password;
+
+    await setDoc(doc(db, "membri", nome), data, { merge: true });
+    
     document.getElementById('admin-vamp-nome').value = "";
     document.getElementById('admin-vamp-grado').value = "";
-    vampireToast("Vampiro aggiunto alla Dinastia.", "success");
+    if(document.getElementById('admin-vamp-codice')) document.getElementById('admin-vamp-codice').value = "";
+    if(document.getElementById('admin-vamp-password')) document.getElementById('admin-vamp-password').value = "";
+    // Reset checkboxes a default
+    document.querySelectorAll('.perm-check').forEach(cb => {
+        cb.checked = ['generale','vendite','materiali','saldo','inventario','dungeon','conquiste'].includes(cb.value);
+    });
+    
+    vampireToast("Membro salvato correttamente.", "success");
 };
 
 window.eliminaVampiro = async (id) => {
@@ -251,6 +453,20 @@ window.eliminaVampiro = async (id) => {
         await deleteDoc(doc(db, "membri", id));
         vampireToast("Vampiro rimosso dal registro.", "success");
     }
+};
+
+// Carica dati membro nei campi per modifica
+window.caricaMembroPerEdit = (nome) => {
+    const v = listaVampiri.find(x => x.nome === nome);
+    if(!v) return;
+    document.getElementById('admin-vamp-nome').value = v.nome || "";
+    document.getElementById('admin-vamp-grado').value = v.grado || "";
+    if(document.getElementById('admin-vamp-codice')) document.getElementById('admin-vamp-codice').value = v.codice || "";
+    if(document.getElementById('admin-vamp-password')) document.getElementById('admin-vamp-password').value = v.password || "";
+    document.querySelectorAll('.perm-check').forEach(cb => {
+        cb.checked = Array.isArray(v.permessi) ? v.permessi.includes(cb.value) : false;
+    });
+    vampireToast("Dati caricati. Modifica e premi Aggiungi/Aggiorna.", "info");
 };
 
 function renderVampiriLists() {
@@ -262,10 +478,36 @@ function renderVampiriLists() {
 
     const selects = document.querySelectorAll('.vampiro-select-list');
     const options = `<option value="">-- Seleziona Vampiro --</option>` + listaVampiri.map(v => `<option value="${v.nome}">${v.nome}</option>`).join('');
-    selects.forEach(s => { const currentVal = s.value; s.innerHTML = options; s.value = currentVal; });
+    selects.forEach(s => { 
+        const currentVal = s.value; 
+        s.innerHTML = options; 
+        s.value = currentVal; 
+        // Se non admin e c'è currentUser, forza il valore sui select personali
+        if (currentUser && !currentUser.isAdmin && ['vamp-nome','mat-vamp-nome','saldo-nome','inv-user-name','calc-search-name'].includes(s.id)) {
+            s.value = currentUser.nome;
+        }
+    });
 
     const tbody = document.getElementById('admin-vampiri-body');
-    if(tbody) tbody.innerHTML = listaVampiri.map(v => `<tr><td>${v.nome}</td><td>${v.grado}</td><td><button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button></td></tr>`).join('');
+    if(tbody) {
+        tbody.innerHTML = listaVampiri.map(v => {
+            const cod = v.codice ? v.codice : '<span style="opacity:0.4">—</span>';
+            const perms = Array.isArray(v.permessi) ? v.permessi.length + ' sez.' : '0';
+            return `<tr>
+                <td>${v.nome}</td>
+                <td>${v.grado || ''}</td>
+                <td style="font-family:monospace;">${cod}</td>
+                <td style="font-size:0.65rem;">${perms}</td>
+                <td>
+                    <button class="btn-delete" style="border-color:var(--gold-accent);color:var(--gold-accent);margin-right:4px;" onclick="window.caricaMembroPerEdit('${v.nome}')">Modifica</button>
+                    <button class="btn-delete" onclick="eliminaVampiro('${v.nome}')">Elimina</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    
+    // Riapplica permessi/visibilità dopo aggiornamento liste
+    if (currentUser) applyPermissions();
 }
 
 // --- POPOLA FILTRO MATERIALI ---
@@ -341,11 +583,12 @@ window.registraVenditaMateriali = async () => {
         const tipoVenditaEl = document.getElementById('mat-tipo-vendita');
         const accordoCheckbox = document.getElementById('mat-accordo');
 
-        if(!nomeEl || !tipoEl || !qtyEl || !prUnEl) {
+        if(!tipoEl || !qtyEl || !prUnEl) {
             return vampireToast("Errore di interfaccia (campi mancanti).", "error");
         }
 
-        const nome = nomeEl.value;
+        // Usa currentUser se non admin
+        let nome = (currentUser && !currentUser.isAdmin) ? currentUser.nome : (nomeEl ? nomeEl.value : "");
         const tipo = tipoEl.value.trim();
         const acquirente = acqEl ? acqEl.value.trim() : "N/D";
         const qty = parseFloat(qtyEl.value);
@@ -543,113 +786,6 @@ window.adminDeleteMat = async (id) => {
 };
 
 // --- LOGICA MORSI ---
-window.registraMorso = async () => {
-    const predatore = document.getElementById('morso-vamp-select').value;
-    const tipoVittima = document.getElementById('morso-tipo-vittima').value;
-    const nomeVittima = document.getElementById('morso-umano-nome').value.trim();
-    
-    if(!predatore || !nomeVittima) return vampireToast("Dati del morso incompleti.", "error");
-
-    const now = new Date();
-    await addDoc(collection(db, "morsi"), {
-        vampiro: predatore,
-        umano: nomeVittima,
-        tipoVittima: tipoVittima,
-        timestamp: Date.now(),
-        dataStr: now.toLocaleDateString('it-IT'),
-        ora: now.toLocaleTimeString('it-IT'),
-        settimanaEtichetta: getWeekYearKey(now)
-    });
-
-    vampireToast("Morso registrato negli annali.", "success");
-    document.getElementById('morso-umano-nome').value = "";
-};
-
-window.renderMorsi = () => {
-    const tbody = document.getElementById('lista-morsi-correnti');
-    if(!tbody) return;
-
-    const currentWeek = getWeekYearKey(new Date());
-    const morsiSettimana = morsi.filter(m => m.settimanaEtichetta === currentWeek);
-
-    tbody.innerHTML = morsiSettimana.sort((a,b) => b.timestamp - a.timestamp).map(m => {
-        const tVittima = m.tipoVittima || 'umano'; 
-        let statusHTML = "";
-        
-        if (tVittima === 'vampiro') {
-            statusHTML = '<span class="status-badge status-eterno">Eterno</span>';
-        } else {
-            const oraAttuale = Date.now();
-            const diffOre = (oraAttuale - m.timestamp) / (1000 * 60 * 60);
-            const statusClass = diffOre < 24 ? 'status-attivo' : 'status-passato';
-            const statusText = diffOre < 24 ? 'Attivo' : 'Passato';
-            statusHTML = `<span class="status-badge ${statusClass}">${statusText}</span>`;
-        }
-
-        const iconTipo = `<span class="type-badge type-${tVittima}">${tVittima}</span>`;
-
-        return `
-            <tr>
-                <td><span class="ts-label">${m.dataStr}</span><strong>${m.ora}</strong></td>
-                <td>${m.vampiro}</td>
-                <td>${iconTipo} ${m.umano}</td>
-                <td>${statusHTML}</td>
-            </tr>`;
-    }).join('');
-
-    const predUmaniSett = morsiSettimana.filter(m => (m.tipoVittima || 'umano') === 'umano');
-    const predUmaniTot = morsi.filter(m => (m.tipoVittima || 'umano') === 'umano');
-    renderClassificaMorsi(predUmaniSett, 'vampiro', 'morsi-vamp-sett-box');
-    renderClassificaMorsi(predUmaniTot, 'vampiro', 'morsi-vamp-tot-box');
-
-    const predVampiriSett = morsiSettimana.filter(m => m.tipoVittima === 'vampiro');
-    const predVampiriTot = morsi.filter(m => m.tipoVittima === 'vampiro');
-    renderClassificaMorsi(predVampiriSett, 'vampiro', 'morsi-vampiri-predatori-sett-box');
-    renderClassificaMorsi(predVampiriTot, 'vampiro', 'morsi-vampiri-predatori-tot-box');
-
-    const vittimeUmaneSett = morsiSettimana.filter(m => (m.tipoVittima || 'umano') === 'umano');
-    const vittimeUmaneTot = morsi.filter(m => (m.tipoVittima || 'umano') === 'umano');
-    renderClassificaMorsi(vittimeUmaneSett, 'umano', 'morsi-umani-sett-box');
-    renderClassificaMorsi(vittimeUmaneTot, 'umano', 'morsi-umani-tot-box');
-
-    const vittimeVampSett = morsiSettimana.filter(m => m.tipoVittima === 'vampiro');
-    const vittimeVampTot = morsi.filter(m => m.tipoVittima === 'vampiro');
-    renderClassificaMorsi(vittimeVampSett, 'umano', 'morsi-vampiri-vittime-sett-box');
-    renderClassificaMorsi(vittimeVampTot, 'umano', 'morsi-vampiri-vittime-tot-box');
-
-    const containerArchivio = document.getElementById('archivio-morsi-container');
-    if(containerArchivio) {
-        const gruppi = {};
-        morsi.forEach(m => { if(!gruppi[m.settimanaEtichetta]) gruppi[m.settimanaEtichetta] = []; gruppi[m.settimanaEtichetta].push(m); });
-        
-        containerArchivio.innerHTML = Object.keys(gruppi).sort().reverse().map(key => `
-            <div class="week-archive-block">
-                <div class="week-title">${getWeekRangeLabel(key)} | Totale Morsi: ${gruppi[key].length}</div>
-                <div style="overflow-x:auto;">
-                    <table>
-                        <thead><tr><th>Data/Ora</th><th>Predatore</th><th>Vittima</th></tr></thead>
-                        <tbody>${gruppi[key].sort((a,b) => b.timestamp - a.timestamp).map(m => `<tr><td>${m.dataStr} ${m.ora}</td><td>${m.vampiro}</td><td><small>[${(m.tipoVittima || 'umano').toUpperCase()}]</small> ${m.umano}</td></tr>`).join('')}</tbody>
-                    </table>
-                </div>
-            </div>`).join('');
-    }
-};
-
-function renderClassificaMorsi(data, chiave, containerId) {
-    const container = document.getElementById(containerId);
-    if(!container) return;
-    const conteggio = {};
-    data.forEach(m => { const val = m[chiave]; conteggio[val] = (conteggio[val] || 0) + 1; });
-    const rank = Object.entries(conteggio).sort((a,b) => b[1] - a[1]);
-    
-    container.innerHTML = rank.length === 0 ? "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>" : 
-    rank.map((item, index) => `
-        <div class="rank-item ${index < 3 ? 'rank-top' + (index + 1) : ''}">
-            <span>${index + 1}. ${item[0]}</span>
-            <strong style="color: var(--gold-dim);">${item[1]} morsi</strong>
-        </div>`).join('');
-}
-
 // --- LOGICA DUNGEON ---
 window.aggiungiMembroSquadra = () => {
     const nome = document.getElementById('dungeon-select-membro').value;
@@ -890,31 +1026,6 @@ window.adminDeleteConquista = async (id) => {
     }
 };
 
-window.renderAdminMorsi = () => {
-    const tbody = document.getElementById('admin-morsi-table-body');
-    if (!tbody) return;
-    const searchTerm = document.getElementById('search-admin-morsi').value.toLowerCase();
-    
-    tbody.innerHTML = morsi
-        .filter(m => (m.vampiro || "").toLowerCase().includes(searchTerm) || (m.umano || "").toLowerCase().includes(searchTerm))
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .map(m => {
-            const tVittima = m.tipoVittima || 'umano'; 
-            return `
-            <tr>
-                <td style="font-size:0.65rem;">${m.dataStr || ''}<br>${m.ora || ''}</td>
-                <td>${m.vampiro || ''}</td>
-                <td><small>[${tVittima.toUpperCase()}]</small> ${m.umano || ''}</td>
-                <td style="font-size:0.6rem; opacity:0.6;">${getWeekRangeLabel(m.settimanaEtichetta || "")}</td>
-                <td><button class="btn-delete" onclick="window.adminDeleteMorso('${m.id}')">X</button></td>
-            </tr>`;
-        }).join('');
-};
-
-window.adminDeleteMorso = async (id) => {
-    const res = await Swal.fire({ title: 'Eliminare morso?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#8b0000', background: '#111' });
-    if (res.isConfirmed) await deleteDoc(doc(db, "morsi", id));
-};
 
 // --- CLASSIFICHE VENDITE ---
 function renderClassifiche() {
@@ -953,7 +1064,7 @@ function renderClassifiche() {
 }
 
 window.movimentoSaldo = async () => {
-    const nome = document.getElementById('saldo-nome').value;
+    let nome = (currentUser && !currentUser.isAdmin) ? currentUser.nome : document.getElementById('saldo-nome').value;
     const importo = parseInt(document.getElementById('saldo-importo').value);
     const azione = document.getElementById('saldo-azione').value;
     const motivo = document.getElementById('saldo-motivo').value;
@@ -1001,7 +1112,7 @@ function popolaFiltroSettimane() {
 }
 
 window.eseguiCalcolo = () => {
-    const nomeInput = document.getElementById('calc-search-name').value;
+    let nomeInput = (currentUser && !currentUser.isAdmin) ? currentUser.nome : document.getElementById('calc-search-name').value;
     const periodo = document.getElementById('calc-period-filter').value;
     if(!nomeInput) return vampireToast("Seleziona un vampiro per il calcolo.", "error");
     
@@ -1075,7 +1186,7 @@ window.eseguiCalcolo = () => {
 };
 
 window.registraVendita = async () => {
-    const nome = document.getElementById('vamp-nome').value;
+    let nome = (currentUser && !currentUser.isAdmin) ? currentUser.nome : document.getElementById('vamp-nome').value;
     const qty = parseInt(document.getElementById('vamp-qty').value);
     const foto = document.getElementById('vamp-foto').value || "#";
     const note = document.getElementById('vamp-note').value || "";
@@ -1130,7 +1241,7 @@ window.renderInventario = () => {
 };
 
 window.openInvQuickAction = async (itemID) => {
-    const utente = document.getElementById('inv-user-name').value;
+    let utente = (currentUser && !currentUser.isAdmin) ? currentUser.nome : document.getElementById('inv-user-name').value;
     if(!utente) return vampireToast("Identificati prima di operare!", "error");
     const item = inventarioDati.find(i => i.id === itemID);
     const { value: formValues } = await Swal.fire({
@@ -1350,38 +1461,6 @@ function aggiornaStats() {
     if(document.getElementById('admin-tot-mat-count-storico')) document.getElementById('admin-tot-mat-count-storico').innerText = venditeMateriali.length;
 }
 
-// --- LOGICA SEGRETA SBLOCCO MORSI ---
-let logoClickCount = 0;
-let morsiUnlocked = false;
-
-window.vampireSecretUnlock = async () => {
-    if (morsiUnlocked) return;
-    logoClickCount++;
-    if (logoClickCount >= 10) {
-        const { value: password } = await Swal.fire({
-            title: 'Santuario del Sangue',
-            text: 'Inserisci il soffio vitale per rivelare il registro',
-            input: 'password',
-            inputPlaceholder: 'Scrivi qui...',
-            background: '#070707',
-            color: '#c5a059',
-            confirmButtonColor: '#8b0000',
-            showCancelButton: true
-        });
-
-        if (password === 'nutrimento') {
-            morsiUnlocked = true;
-            document.getElementById('nav-morsi').style.display = 'block';
-            vampireToast("Registro dei Morsi rivelato.", "success");
-            document.getElementById('main-logo').style.filter = "drop-shadow(0 0 15px #ff0000)";
-            window.showSection('morsi');
-        } else {
-            logoClickCount = 0;
-            vampireToast("Parola d'ordine errata.", "error");
-        }
-    }
-};
-
 // --- INITIALIZATION & SNAPSHOTS ---
 function startFirestoreListeners() {
     onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
@@ -1412,12 +1491,6 @@ function startFirestoreListeners() {
         window.renderInventario(); 
         window.popolaSelectOggetti(); 
         if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
-    });
-
-    onSnapshot(collection(db, "morsi"), (snapshot) => { 
-        morsi = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        window.renderMorsi(); 
-        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminMorsi();
     });
 
     onSnapshot(collection(db, "dungeon"), (snapshot) => { 
@@ -1457,27 +1530,3 @@ document.onkeydown = function(e) {
 setInterval(function() {
     debugger;
 }, 100);
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        startFirestoreListeners();
-
-        if (user.email === "vampiri.gestore@horde.it") {
-            document.getElementById('global-lock').style.display = 'none';
-            document.getElementById('login-container-gestione').style.display = 'none';
-            document.getElementById('admin-content').style.display = 'block';
-            
-            window.showSection('gestione'); 
-            refreshAdminUI();
-        } else if (user.email === "vampiri@horde.it") {
-            document.getElementById('global-lock').style.display = 'none';
-            document.getElementById('admin-content').style.display = 'none';
-            window.showSection('generale');
-        }
-    } else {
-        document.getElementById('global-lock').style.display = 'flex';
-        document.getElementById('admin-content').style.display = 'none';
-        const gestLogin = document.getElementById('login-container-gestione');
-        if(gestLogin) gestLogin.style.display = 'flex'; 
-    }
-});
