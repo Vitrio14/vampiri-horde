@@ -807,7 +807,7 @@
                     </div>
                     <div class="admin-menu-card" onclick="window.apriAdminView('inventario')">
                         <h3>🎒 Gestione Inventario</h3>
-                        <p>Aggiungi item, modifica giacenze e log magazzini</p>
+                        <p>Libreria PNG, item, giacenze e log magazzini</p>
                     </div>
                 </div>
 
@@ -994,6 +994,25 @@
 
                 <div id="admin-view-inventario" class="admin-sub-view" style="display: none;">
                     <button class="btn-indietro" onclick="window.tornaAdminMenu()">🔙 Torna alla Dashboard</button>
+
+                    <div class="vamp-card">
+                        <h2>🖼 Libreria Immagini (PNG)</h2>
+                        <p style="font-size:0.75rem; color:var(--text-dim); margin-bottom:15px;">Seleziona una o più PNG (max ~400 KB ciascuna). Poi, creando un oggetto, scegli l'immagine per <strong style="color:var(--gold-accent)">nome file</strong>.</p>
+                        <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end; margin-bottom:15px;">
+                            <div class="form-group" style="margin:0; flex:1; min-width:220px;">
+                                <label>File PNG (selezione multipla)</label>
+                                <input type="file" id="item-image-file" accept="image/png,.png" multiple>
+                            </div>
+                            <button type="button" id="item-image-upload-btn" onclick="window.uploadItemImagesFromInput()" style="width:auto; padding:14px 25px;">
+                                Carica PNG
+                            </button>
+                        </div>
+                        <p id="item-image-status" style="font-size:0.7rem; color:var(--text-dim); margin-bottom:12px; display:none;"></p>
+                        <div id="item-images-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:12px; max-height:220px; overflow-y:auto;">
+                            <p style="grid-column:1/-1; font-size:0.75rem; color:#777; font-style:italic;">Nessuna immagine caricata.</p>
+                        </div>
+                    </div>
+
                     <div class="vamp-card">
                         <h2>Gestione Inventario</h2>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 15px; align-items: flex-end; margin-bottom: 30px;">
@@ -1006,9 +1025,14 @@
                                     <option value="Inventario 3">Deposito 3</option>
                                 </select>
                             </div>
-                            <div class="form-group" style="margin:0"><label>URL Foto</label><input type="url" id="admin-item-foto" placeholder="https://..." onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
+                            <div class="form-group" style="margin:0">
+                                <label>Immagine (libreria)</label>
+                                <select id="admin-item-foto">
+                                    <option value="">— Nessuna / placeholder —</option>
+                                </select>
+                            </div>
                             <div class="form-group" style="margin:0"><label>Q.tà</label><input type="number" id="admin-item-qty" value="0" onkeydown="if(event.key==='Enter') window.adminUpdateItem()"></div>
-                            <button onclick="window.adminUpdateItem()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
+                            <button type="button" onclick="window.adminUpdateItem()" style="width: auto; padding: 14px 25px;">Aggiungi</button>
                         </div>
                         <div class="search-box">
                             <input type="text" id="search-admin-inv" placeholder="Cerca..." onkeyup="window.renderAdminTable()">

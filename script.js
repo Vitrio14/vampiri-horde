@@ -29,6 +29,7 @@ let saldoGlobale = 0;
 let listaVampiri = [];
 let comunicazioni = [];
 let documenti = [];
+let itemImagesLib = []; // { id, fileName, dataUrl, size, createdAt }
 
 let squadraDungeonTemp = [];
 let squadraConquistaTemp = [];
@@ -1293,17 +1294,27 @@ window.adminUpdateSaldo = async () => {
 window.adminUpdateItem = async () => {
     const n = document.getElementById('admin-item-name').value.trim();
     const c = document.getElementById('admin-item-cat').value;
-    const f = document.getElementById('admin-item-foto').value.trim();
+    const imgId = document.getElementById('admin-item-foto')?.value || "";
     const q = parseInt(document.getElementById('admin-item-qty').value) || 0;
-    
-    if(n) {
-        await setDoc(doc(db, "inventario", n), { qty: q, categoria: c, foto: f });
-        document.getElementById('admin-item-name').value = "";
-        document.getElementById('admin-item-foto').value = "";
-        vampireToast("Elemento inventario aggiornato.", "success");
-    } else {
-        vampireToast("Nome obbligatorio.", "error");
+
+    if (!n) return vampireToast("Nome obbligatorio.", "error");
+
+    let foto = "https://via.placeholder.com/100/121212/8b0000?text=?";
+    let imageFileName = "";
+    if (imgId) {
+        const found = itemImagesLib.find(x => x.id === imgId);
+        if (found) {
+            foto = found.dataUrl || foto;
+            imageFileName = found.fileName || "";
+        }
     }
+
+    await setDoc(doc(db, "inventario", n), { qty: q, categoria: c, foto, imageFileName });
+    document.getElementById('admin-item-name').value = "";
+    document.getElementById('admin-item-qty').value = "0";
+    const sel = document.getElementById('admin-item-foto');
+    if (sel) sel.value = "";
+    vampireToast("Elemento inventario aggiornato.", "success");
 };
 
 window.adminUpdateQty = async (item, val) => {
@@ -1493,6 +1504,12 @@ function startFirestoreListeners() {
         if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
     });
 
+    onSnapshot(collection(db, "item_images"), (snapshot) => {
+        itemImagesLib = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (typeof window.renderItemImagesLibrary === 'function') window.renderItemImagesLibrary();
+        if (typeof window.renderItemImageSelects === 'function') window.renderItemImageSelects();
+    });
+
     onSnapshot(collection(db, "dungeon"), (snapshot) => { 
         dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
         window.renderDungeon(); 
@@ -1515,6 +1532,146 @@ function startFirestoreListeners() {
         if (document.getElementById('admin-saldo-val')) document.getElementById('admin-saldo-val').value = saldoGlobale;
     });
 }
+
+
+
+// --- LIBRERIA IMMAGINI PNG (Firestore base64, multi-upload, no Storage) ---
+const MAX_ITEM_IMAGE_BYTES = 400 * 1024;
+
+window.renderItemImageSelects = function() {
+    const sel = document.getElementById('admin-item-foto');
+    if (!sel) return;
+    const prev = sel.value;
+    const sorted = [...itemImagesLib].sort((a, b) => (a.fileName || '').localeCompare(b.fileName || '', undefined, { sensitivity: 'base' }));
+    sel.innerHTML = '<option value="">— Nessuna / placeholder —</option>' +
+        sorted.map(img => `<option value="${img.id}">${img.fileName || img.id}</option>`).join('');
+    if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+};
+
+window.renderItemImagesLibrary = function() {
+    const grid = document.getElementById('item-images-grid');
+    if (!grid) return;
+    if (!itemImagesLib.length) {
+        grid.innerHTML = '<p style="grid-column:1/-1; font-size:0.75rem; color:#777; font-style:italic;">Nessuna immagine caricata.</p>';
+        return;
+    }
+    const sorted = [...itemImagesLib].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    grid.innerHTML = sorted.map(img => {
+        const name = (img.fileName || 'file.png').replace(/</g, '&lt;');
+        return `<div style="position:relative; background:rgba(0,0,0,0.5); border:1px solid #333; border-radius:4px; overflow:hidden; text-align:center;">
+            <div style="height:72px; display:flex; align-items:center; justify-content:center; padding:6px;">
+                <img src="${img.dataUrl || ''}" alt="" style="max-height:100%; max-width:100%; object-fit:contain;">
+            </div>
+            <div style="padding:6px; border-top:1px solid #333; font-size:0.6rem; color:var(--gold-accent); word-break:break-all;">${name}</div>
+            <button type="button" class="btn-delete" style="position:absolute; top:4px; right:4px; padding:2px 6px;" onclick="window.deleteItemImage('${img.id}', '${name.replace(/'/g, "\\'")}')">X</button>
+        </div>`;
+    }).join('');
+};
+
+window.deleteItemImage = async function(id, name) {
+    const res = await Swal.fire({
+        title: 'Eliminare immagine?',
+        text: name || '',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#8b0000',
+        background: '#111',
+        color: '#fff'
+    });
+    if (!res.isConfirmed) return;
+    try {
+        await deleteDoc(doc(db, 'item_images', id));
+        vampireToast('Immagine rimossa dalla libreria.', 'success');
+    } catch (err) {
+        vampireToast('Errore: ' + (err.message || err), 'error');
+    }
+};
+
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Lettura fallita: ' + file.name));
+        reader.readAsDataURL(file);
+    });
+}
+
+window.uploadItemImagesFromInput = async function() {
+    console.log('[Vampiri] upload immagini', { isAdmin: currentUser?.isAdmin });
+    try {
+        if (!currentUser || !currentUser.isAdmin) {
+            return vampireToast('Solo il gestore può caricare immagini.', 'error');
+        }
+        const fileInput = document.getElementById('item-image-file');
+        const files = fileInput?.files ? Array.from(fileInput.files) : [];
+        if (!files.length) return vampireToast('Seleziona uno o più file PNG.', 'error');
+
+        const btn = document.getElementById('item-image-upload-btn');
+        const statusEl = document.getElementById('item-image-status');
+        const prevHtml = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Carico...'; }
+        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = 'Caricamento in corso...'; }
+
+        let ok = 0, skip = 0, fail = 0;
+        const existing = new Set(itemImagesLib.map(i => (i.fileName || '').toLowerCase()));
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (btn) btn.textContent = `${i + 1}/${files.length}`;
+            if (statusEl) statusEl.textContent = `Carico ${i + 1}/${files.length}: ${file.name}`;
+
+            const isPng = file.type === 'image/png' || /\.png$/i.test(file.name);
+            if (!isPng) { skip++; continue; }
+            if (file.size > MAX_ITEM_IMAGE_BYTES) {
+                vampireToast(`"${file.name}" troppo grande (${Math.round(file.size / 1024)} KB). Max 400 KB.`, 'error');
+                skip++;
+                continue;
+            }
+            const baseName = file.name.replace(/[^\w.\-()+ ]+/g, '_');
+            if (existing.has(baseName.toLowerCase())) {
+                vampireToast(`"${baseName}" già in libreria, saltato.`, 'info');
+                skip++;
+                continue;
+            }
+            try {
+                const dataUrl = await readFileAsDataURL(file);
+                await addDoc(collection(db, 'item_images'), {
+                    fileName: baseName,
+                    dataUrl,
+                    size: file.size,
+                    createdAt: Date.now()
+                });
+                existing.add(baseName.toLowerCase());
+                ok++;
+            } catch (err) {
+                fail++;
+                console.error(err);
+                const msg = err?.message || String(err);
+                if (String(err?.code || '').includes('permission') || msg.toLowerCase().includes('permission')) {
+                    vampireToast('Permesso negato su item_images. Controlla le regole Firestore.', 'error');
+                } else {
+                    vampireToast(`Errore su "${file.name}": ${msg}`, 'error');
+                }
+            }
+        }
+
+        if (fileInput) fileInput.value = '';
+        if (btn) { btn.disabled = false; btn.innerHTML = prevHtml || 'Carica PNG'; }
+        if (statusEl) {
+            statusEl.textContent = ok > 0
+                ? `Completato: ${ok} caricate${skip ? ', ' + skip + ' saltate' : ''}.`
+                : 'Nessuna immagine nuova caricata.';
+        }
+        if (ok > 0) vampireToast(`Caricate ${ok} immagini${skip ? ' (' + skip + ' saltate)' : ''}.`, 'success');
+        else if (skip && !fail) vampireToast('Nessuna nuova immagine (già presenti o non valide).', 'info');
+        else if (fail) vampireToast('Caricamento fallito. Vedi console (F12).', 'error');
+    } catch (err) {
+        console.error(err);
+        vampireToast('Errore upload: ' + (err.message || err), 'error');
+        const btn = document.getElementById('item-image-upload-btn');
+        if (btn) { btn.disabled = false; btn.textContent = 'Carica PNG'; }
+    }
+};
 
 // --- PROTEZIONE INTERFACCIA ---
 document.addEventListener('contextmenu', event => event.preventDefault());
