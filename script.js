@@ -30,6 +30,7 @@ let listaVampiri = [];
 let comunicazioni = [];
 let documenti = [];
 let itemImagesLib = []; // { id, fileName, dataUrl, size, createdAt }
+let tipiMateriale = []; // { id, nome, prezzoUnitario, percPropria, percDinastia, percEkaton, sezioni:[], attivo }
 
 let squadraDungeonTemp = [];
 let squadraConquistaTemp = [];
@@ -38,7 +39,7 @@ let squadraConquistaTemp = [];
 let currentUser = null; // { nome, grado, codice, password, permessi: [], isAdmin: false }
 let listenersStarted = false;
 
-const VALORE_UNITARIO = 30;
+const VALORE_UNITARIO = 30; // fallback legacy
 
 // Sezioni disponibili e mapping nav
 const SEZIONI = {
@@ -310,6 +311,7 @@ function refreshAdminUI() {
     window.renderAdminDungeon(); 
     window.renderAdminConquiste();
     window.renderAdminMateriali(); 
+    if (typeof window.renderAdminTipiMateriale === 'function') window.renderAdminTipiMateriale();
     renderVampiriLists(); 
     renderDinamici(); 
     aggiornaStats(); 
@@ -579,60 +581,50 @@ window.updateMatTot = () => {
 window.registraVenditaMateriali = async () => {
     try {
         const nomeEl = document.getElementById('mat-vamp-nome');
-        const tipoEl = document.getElementById('mat-tipo');
+        const tipoSel = document.getElementById('mat-tipo-select');
         const acqEl = document.getElementById('mat-acquirente');
         const qtyEl = document.getElementById('mat-qty');
-        const prUnEl = document.getElementById('mat-prezzo-un'); 
         const fotoEl = document.getElementById('mat-foto');
-        const tipoVenditaEl = document.getElementById('mat-tipo-vendita');
-        const accordoCheckbox = document.getElementById('mat-accordo');
 
-        if(!tipoEl || !qtyEl || !prUnEl) {
-            return vampireToast("Errore di interfaccia (campi mancanti).", "error");
-        }
-
-        // Usa currentUser se non admin
         let nome = (currentUser && !currentUser.isAdmin) ? currentUser.nome : (nomeEl ? nomeEl.value : "");
-        const tipo = tipoEl.value.trim();
+        const tipoId = tipoSel ? tipoSel.value : "";
         const acquirente = acqEl ? acqEl.value.trim() : "N/D";
-        const qty = parseFloat(qtyEl.value);
-        const prezzoUn = parseFloat(prUnEl.value); 
+        const qty = parseFloat(qtyEl?.value);
 
-        if(!nome || !tipo || isNaN(qty) || qty <= 0 || isNaN(prezzoUn) || prezzoUn <= 0) {
-            return vampireToast("Inserisci tutti i dati obbligatori e validi.", "error");
+        if (!nome || !tipoId || isNaN(qty) || qty <= 0) {
+            return vampireToast("Seleziona materiale, vampiro e quantità validi.", "error");
         }
+
+        const cfg = tipiMateriale.find(t => t.id === tipoId);
+        if (!cfg) return vampireToast("Materiale non trovato in configurazione.", "error");
+
+        const prezzoUn = Number(cfg.prezzoUnitario) || 0;
+        const percPro = Number(cfg.percPropria) ?? 40;
+        const percDin = Number(cfg.percDinastia) ?? (100 - percPro);
+        const percEkaton = Number(cfg.percEkaton) ?? 50;
+        if (prezzoUn <= 0) return vampireToast("Prezzo unitario non valido per questo materiale.", "error");
 
         const prezzoTot = qty * prezzoUn;
-        const tipoVendita = tipoVenditaEl ? tipoVenditaEl.value : "mercante-75";
-        const isAccordo = accordoCheckbox ? accordoCheckbox.checked : false;
-        
-        let percPro = 40; 
-
-        if ((tipoVendita === 'mercante-75' || tipoVendita === 'mercante-100') && isAccordo) {
-            percPro = 60; 
-        }
-        
-        const percDin = 100 - percPro; 
-
-        const foto = (fotoEl && fotoEl.value) ? fotoEl.value : "#";
-
         const vPro = (prezzoTot * percPro) / 100;
         const vDin = (prezzoTot * percDin) / 100;
+        const ekaton = vDin * (percEkaton / 100);
+        const foto = (fotoEl && fotoEl.value) ? fotoEl.value : "#";
 
         const now = new Date();
         await addDoc(collection(db, "vendite_materiali"), {
             vampiro: nome,
-            materiale: tipo,
-            acquirente: acquirente,
-            tipoVendita: tipoVendita, 
-            accordo: isAccordo,
-            qty: qty,
-            prezzoUn: prezzoUn,
-            prezzoTot: prezzoTot,
+            materiale: cfg.nome,
+            tipoMaterialeId: tipoId,
+            acquirente: acquirente || "N/D",
+            qty,
+            prezzoUn,
+            prezzoTot,
             pPro: percPro,
-            pDin: percDin,   
-            vPro: vPro,
-            vDin: vDin,      
+            pDin: percDin,
+            pEkaton: percEkaton,
+            vPro,
+            vDin,
+            ekaton,
             timestamp: Date.now(),
             dataStr: now.toLocaleDateString('it-IT'),
             ora: now.toLocaleTimeString('it-IT'),
@@ -640,18 +632,11 @@ window.registraVenditaMateriali = async () => {
         });
 
         vampireToast("Vendita registrata correttamente.", "success");
-
-        [tipoEl, acqEl, qtyEl, fotoEl].forEach(el => {
-            if(el) el.value = "";
-        });
-        const totEl = document.getElementById('mat-prezzo-tot');
-        if(totEl) totEl.value = "";
-        
-        if(tipoVenditaEl) {
-            tipoVenditaEl.value = 'mercante-75';
-            window.toggleTipoVendita(); 
-        }
-
+        if (qtyEl) qtyEl.value = "";
+        if (fotoEl) fotoEl.value = "";
+        if (tipoSel) tipoSel.value = "";
+        if (acqEl) acqEl.value = "";
+        window.updateMatPreview();
     } catch (error) {
         console.error("Errore salvataggio materiali: ", error);
         vampireToast("Errore durante la registrazione.", "error");
@@ -1031,40 +1016,50 @@ window.adminDeleteConquista = async (id) => {
 };
 
 
-// --- CLASSIFICHE VENDITE ---
+// --- CLASSIFICHE VENDITE / MATERIALI (separate) ---
 function renderClassifiche() {
     const currentWeek = getWeekYearKey(new Date());
-    const mapSett = {};
-    
-    vendite.filter(v => v.settimanaEtichetta === currentWeek).forEach(v => {
-        if (!mapSett[v.nome]) mapSett[v.nome] = { carbonio: 0, crediti: 0 };
-        mapSett[v.nome].carbonio += (v.qty || 0); 
-        mapSett[v.nome].crediti += (v.dinastia || 0);
-    });
-    const rankSett = Object.entries(mapSett).sort((a,b) => b[1].carbonio - a[1].carbonio);
 
-    const mapSempre = {};
-    vendite.forEach(v => {
-        if (!mapSempre[v.nome]) mapSempre[v.nome] = { carbonio: 0, crediti: 0 };
-        mapSempre[v.nome].carbonio += (v.qty || 0); 
-        mapSempre[v.nome].crediti += (v.dinastia || 0);
-    });
-    const rankSempre = Object.entries(mapSempre).sort((a,b) => b[1].crediti - a[1].crediti);
+    const buildRank = (rows, nameKey, qtyKey, creditKey, weekOnly) => {
+        const map = {};
+        rows.forEach(r => {
+            if (weekOnly && r.settimanaEtichetta !== currentWeek) return;
+            const nome = r[nameKey];
+            if (!nome) return;
+            if (!map[nome]) map[nome] = { qty: 0, crediti: 0 };
+            map[nome].qty += (r[qtyKey] || 0);
+            map[nome].crediti += (r[creditKey] || 0);
+        });
+        return Object.entries(map).sort((a, b) => b[1].qty - a[1].qty || b[1].crediti - a[1].crediti);
+    };
 
-    const generateHtml = (arr) => {
-        if(arr.length === 0) return "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>";
+    const rankVendSett = buildRank(vendite, 'nome', 'qty', 'dinastia', true);
+    const rankVendSempre = buildRank(vendite, 'nome', 'qty', 'dinastia', false)
+        .sort((a, b) => b[1].crediti - a[1].crediti || b[1].qty - a[1].qty);
+    const rankMatSett = buildRank(venditeMateriali, 'vampiro', 'qty', 'vDin', true);
+    const rankMatSempre = buildRank(venditeMateriali, 'vampiro', 'qty', 'vDin', false)
+        .sort((a, b) => b[1].crediti - a[1].crediti || b[1].qty - a[1].qty);
+
+    const generateHtml = (arr, unitLabel) => {
+        if (!arr.length) return "<p style='font-size:0.7rem; opacity:0.3; text-align:center;'>Nessun dato</p>";
         return arr.map((item, index) => `
             <div class="rank-item ${index < 3 ? 'rank-top' + (index + 1) : ''}">
                 <span style="font-weight:600;">${index + 1}. ${item[0]}</span>
                 <div style="text-align: right; line-height: 1.2;">
-                    <strong style="display:block; color: var(--gold-dim); font-size:0.75rem;">${fmt(item[1].carbonio)}x Carb.</strong>
-                    <small style="color:var(--gold-accent); font-size:0.6rem; text-transform:uppercase;">${fmt(item[1].crediti)} cr</small> 
+                    <strong style="display:block; color: var(--gold-dim); font-size:0.75rem;">${fmt(item[1].qty)}x ${unitLabel}</strong>
+                    <small style="color:var(--gold-accent); font-size:0.6rem; text-transform:uppercase;">${fmt(item[1].crediti)} cr dinastia</small>
                 </div>
             </div>`).join('');
     };
 
-    document.getElementById('top-settimana-box').innerHTML = generateHtml(rankSett);
-    document.getElementById('top-sempre-box').innerHTML = generateHtml(rankSempre);
+    const elSett = document.getElementById('top-settimana-box');
+    const elSempre = document.getElementById('top-sempre-box');
+    const elMatSett = document.getElementById('top-mat-settimana-box');
+    const elMatSempre = document.getElementById('top-mat-sempre-box');
+    if (elSett) elSett.innerHTML = generateHtml(rankVendSett, 'qty');
+    if (elSempre) elSempre.innerHTML = generateHtml(rankVendSempre, 'qty');
+    if (elMatSett) elMatSett.innerHTML = generateHtml(rankMatSett, 'mat');
+    if (elMatSempre) elMatSempre.innerHTML = generateHtml(rankMatSempre, 'mat');
 }
 
 window.movimentoSaldo = async () => {
@@ -1104,7 +1099,10 @@ function popolaFiltroSettimane() {
     const filter = document.getElementById('calc-period-filter');
     if(!filter) return;
     const valCorrente = filter.value;
-    const settimaneUniche = [...new Set(vendite.map(v => v.settimanaEtichetta))].filter(Boolean).sort().reverse();
+    const settimaneUniche = [...new Set([
+        ...vendite.map(v => v.settimanaEtichetta),
+        ...venditeMateriali.map(m => m.settimanaEtichetta)
+    ])].filter(Boolean).sort().reverse();
     
     let options = `<option value="current">Settimana Corrente</option><option value="all">Totale Storico</option>`;
     settimaneUniche.forEach(s => {
@@ -1141,49 +1139,58 @@ window.eseguiCalcolo = () => {
         return vampireToast("Nessun record trovato per i parametri scelti.", "error"); 
     }
     
-    // Calcoli Carbonio
-    const totQtyCarbonio = filtratiCarbonio.reduce((a, b) => a + (b.qty || 0), 0);
-    const totCrCarbonio = filtratiCarbonio.reduce((a, b) => a + (b.totale || 0), 0);
+    // Calcoli Vendite (collection vendite) — usa valori salvati sul record
+    const totQtyVendite = filtratiCarbonio.reduce((a, b) => a + (b.qty || 0), 0);
+    const totCrVendite = filtratiCarbonio.reduce((a, b) => a + (b.totale || 0), 0);
+    const totProVendite = filtratiCarbonio.reduce((a, b) => a + (b.propria != null ? b.propria : (b.totale || 0) * 0.4), 0);
+    const totDinVendite = filtratiCarbonio.reduce((a, b) => a + (b.dinastia != null ? b.dinastia : (b.totale || 0) * 0.6), 0);
+    const totEkVendite = filtratiCarbonio.reduce((a, b) => a + calcEkatonFromRecord(b), 0);
     
-    // Calcoli Materiali
+    // Calcoli Materiali (collection vendite_materiali)
     const totQtyMat = filtratiMateriali.reduce((a, b) => a + (b.qty || 0), 0);
     const totCrMat = filtratiMateriali.reduce((a, b) => a + (b.prezzoTot || 0), 0);
     const totVampMat = filtratiMateriali.reduce((a, b) => a + (b.vPro || 0), 0);
     const totDinMat = filtratiMateriali.reduce((a, b) => a + (b.vDin || 0), 0);
+    const totEkMat = filtratiMateriali.reduce((a, b) => a + calcEkatonFromRecord({
+        ekaton: b.ekaton,
+        dinastia: b.vDin,
+        vDin: b.vDin,
+        pEkaton: b.pEkaton
+    }), 0);
 
     document.getElementById('calc-res-nome').innerText = nomeInput.toUpperCase();
     
-    // Assegnazioni Carbonio
-    if(document.getElementById('calc-res-qty')) document.getElementById('calc-res-qty').innerText = fmt(totQtyCarbonio);
-    if(document.getElementById('calc-res-tot')) document.getElementById('calc-res-tot').innerText = fmt(totCrCarbonio) + " cr";
-    if(document.getElementById('calc-res-vamp')) document.getElementById('calc-res-vamp').innerText = fmt(totCrCarbonio * 0.4) + " cr";
-    if(document.getElementById('calc-res-din')) document.getElementById('calc-res-din').innerText = fmt(totCrCarbonio * 0.6) + " cr";
+    if(document.getElementById('calc-res-qty')) document.getElementById('calc-res-qty').innerText = fmt(totQtyVendite);
+    if(document.getElementById('calc-res-tot')) document.getElementById('calc-res-tot').innerText = fmt(totCrVendite) + " cr";
+    if(document.getElementById('calc-res-vamp')) document.getElementById('calc-res-vamp').innerText = fmt(totProVendite) + " cr";
+    if(document.getElementById('calc-res-din')) document.getElementById('calc-res-din').innerText = fmt(totDinVendite) + " cr";
+    if(document.getElementById('calc-res-ekaton')) document.getElementById('calc-res-ekaton').innerText = fmt(totEkVendite) + " cr";
     if(document.getElementById('calc-res-count')) document.getElementById('calc-res-count').innerText = filtratiCarbonio.length;
     
-    // Assegnazioni Materiali
     if(document.getElementById('calc-res-mat-qty')) document.getElementById('calc-res-mat-qty').innerText = fmt(totQtyMat);
     if(document.getElementById('calc-res-mat-tot')) document.getElementById('calc-res-mat-tot').innerText = fmt(totCrMat) + " cr";
     if(document.getElementById('calc-res-mat-vamp')) document.getElementById('calc-res-mat-vamp').innerText = fmt(totVampMat) + " cr";
     if(document.getElementById('calc-res-mat-din')) document.getElementById('calc-res-mat-din').innerText = fmt(totDinMat) + " cr";
+    if(document.getElementById('calc-res-mat-ekaton')) document.getElementById('calc-res-mat-ekaton').innerText = fmt(totEkMat) + " cr";
     if(document.getElementById('calc-res-mat-count')) document.getElementById('calc-res-mat-count').innerText = filtratiMateriali.length;
 
-    const listaHtmlCarbonio = filtratiCarbonio.sort((a,b) => b.timestamp - a.timestamp).map(v => `
+    const listaHtmlVendite = filtratiCarbonio.sort((a,b) => b.timestamp - a.timestamp).map(v => `
         <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
-            <span>[CARB] ${v.dataStr || ''} (${v.ora || ''})</span>
+            <span>[VEND] ${v.materiale || '—'} · ${v.dataStr || ''} (${v.ora || ''})</span>
             <span style="color: var(--gold-dim);">${v.qty || 0}x - ${fmt(v.totale || 0)} cr</span>
         </div>
     `).join('');
     
     const listaHtmlMateriali = filtratiMateriali.sort((a,b) => b.timestamp - a.timestamp).map(m => `
         <div style="border-bottom: 1px solid #222; padding: 5px 0; display: flex; justify-content: space-between;">
-            <span>[MAT] ${m.materiale || 'Materiale'} | ${m.dataStr || ''} (${m.ora || ''})</span>
+            <span>[MAT] ${m.materiale || 'Materiale'} · ${m.dataStr || ''} (${m.ora || ''})</span>
             <span style="color: var(--gold-dim);">${m.qty || 0}x - ${fmt(m.prezzoTot || 0)} cr</span>
         </div>
     `).join('');
 
     document.getElementById('calc-res-lista-dettaglio').innerHTML = 
-        (listaHtmlCarbonio ? "<strong>Dettaglio Vendite Carbonio:</strong>" + listaHtmlCarbonio : "") + 
-        (listaHtmlMateriali ? "<br><strong>Dettaglio Vendite Materiali:</strong>" + listaHtmlMateriali : "");
+        (listaHtmlVendite ? "<strong>Dettaglio Vendite:</strong>" + listaHtmlVendite : "") + 
+        (listaHtmlMateriali ? "<br><strong>Dettaglio Vendita Materiali:</strong>" + listaHtmlMateriali : "");
 
     resBox.style.display = "block"; 
     vampireToast("Resoconto generato con successo.", "success");
@@ -1191,19 +1198,59 @@ window.eseguiCalcolo = () => {
 
 window.registraVendita = async () => {
     let nome = (currentUser && !currentUser.isAdmin) ? currentUser.nome : document.getElementById('vamp-nome').value;
+    const tipoId = document.getElementById('vamp-tipo-mat')?.value || "";
     const qty = parseInt(document.getElementById('vamp-qty').value);
     const foto = document.getElementById('vamp-foto').value || "#";
     const note = document.getElementById('vamp-note').value || "";
-    if(!nome || !qty) return vampireToast("Dati incompleti per la registrazione.", "error");
-    const tot = qty * VALORE_UNITARIO;
+    if(!nome || !qty || qty <= 0) return vampireToast("Dati incompleti per la registrazione.", "error");
+
+    let cfg = tipiMateriale.find(t => t.id === tipoId);
+    // Fallback legacy Carbonio se nessun tipo selezionato / non configurato
+    if (!cfg) {
+        cfg = {
+            nome: "Carbonio",
+            prezzoUnitario: VALORE_UNITARIO,
+            percPropria: 40,
+            percDinastia: 60,
+            percEkaton: 50
+        };
+    }
+
+    const prezzoUn = Number(cfg.prezzoUnitario) || VALORE_UNITARIO;
+    const percPro = Number(cfg.percPropria) ?? 40;
+    const percDin = Number(cfg.percDinastia) ?? (100 - percPro);
+    const percEkaton = Number(cfg.percEkaton) ?? 50;
+    const tot = qty * prezzoUn;
+    const propria = tot * (percPro / 100);
+    const dinastia = tot * (percDin / 100);
+    const ekaton = dinastia * (percEkaton / 100);
+
     const now = new Date();
     await addDoc(collection(db, "vendite"), {
-        nome, qty, foto, note, totale: tot, propria: tot * 0.4, dinastia: tot * 0.6,
-        timestamp: Date.now(), dataStr: now.toLocaleDateString('it-IT'), ora: now.toLocaleTimeString('it-IT'),
+        nome,
+        materiale: cfg.nome || "Carbonio",
+        tipoMaterialeId: tipoId || null,
+        qty,
+        prezzoUn,
+        foto,
+        note,
+        totale: tot,
+        propria,
+        dinastia,
+        ekaton,
+        pPro: percPro,
+        pDin: percDin,
+        pEkaton: percEkaton,
+        timestamp: Date.now(),
+        dataStr: now.toLocaleDateString('it-IT'),
+        ora: now.toLocaleTimeString('it-IT'),
         settimanaEtichetta: getWeekYearKey(now)
     });
     vampireToast("Vendita sigillata nel registro.", "success");
-    document.getElementById('vamp-qty').value = ""; document.getElementById('vamp-note').value = "";
+    document.getElementById('vamp-qty').value = "";
+    document.getElementById('vamp-note').value = "";
+    document.getElementById('vamp-foto').value = "";
+    window.updateVenditaPreview();
 };
 
 window.renderVendite = () => {
@@ -1211,12 +1258,19 @@ window.renderVendite = () => {
     if(!lista) return;
     const searchTerm = document.getElementById('search-vendite').value.toLowerCase();
     const key = getWeekYearKey(new Date());
-    lista.innerHTML = vendite.filter(v => v.settimanaEtichetta === key && ((v.nome || "").toLowerCase().includes(searchTerm) || (v.note && v.note.toLowerCase().includes(searchTerm))))
+    lista.innerHTML = vendite.filter(v => v.settimanaEtichetta === key && (
+            (v.nome || "").toLowerCase().includes(searchTerm) ||
+            (v.materiale || "").toLowerCase().includes(searchTerm) ||
+            (v.note && v.note.toLowerCase().includes(searchTerm))
+        ))
         .sort((a,b) => b.timestamp - a.timestamp)
         .map(v => `
         <tr>
             <td><span class="ts-label">${v.dataStr || ''}</span><strong>${v.ora || ''}</strong></td>
-            <td>${v.nome || ''}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}x</td><td style="color: var(--gold-dim);">${fmt(v.totale)}</td>
+            <td>${v.nome || ''}</td>
+            <td style="color:var(--gold-accent)">${v.materiale || 'Carbonio'}</td>
+            <td style="color: var(--gold-dim);">${fmt(v.qty)}x</td>
+            <td style="color: var(--gold-dim);">${fmt(v.totale)}</td>
             <td style="color:var(--success-green)">${fmt(v.propria)}</td>
             <td style="color:var(--gold-accent)">${fmt(v.dinastia)}</td>
             <td style="font-size: 0.7rem; opacity: 0.6;">${v.note || '-'}</td>
@@ -1408,16 +1462,31 @@ window.renderArchivioGestione = () => {
     const gruppi = {};
     vendite.forEach(v => { if(!gruppi[v.settimanaEtichetta]) gruppi[v.settimanaEtichetta] = []; gruppi[v.settimanaEtichetta].push(v); });
     container.innerHTML = Object.keys(gruppi).sort().reverse().map(key => {
-        const filtered = gruppi[key].filter(v => (v.nome || "").toLowerCase().includes(searchTerm) || (v.note && v.note.toLowerCase().includes(searchTerm))).sort((a,b) => b.timestamp - a.timestamp);
+        const filtered = gruppi[key].filter(v =>
+            (v.nome || "").toLowerCase().includes(searchTerm) ||
+            (v.materiale || "").toLowerCase().includes(searchTerm) ||
+            (v.note && v.note.toLowerCase().includes(searchTerm))
+        ).sort((a,b) => b.timestamp - a.timestamp);
         if(filtered.length === 0 && searchTerm !== "") return "";
         const range = getWeekRangeLabel(key);
         const weekTotalQty = filtered.reduce((sum, v) => sum + (v.qty || 0), 0);
         const weekTotalDinastia = filtered.reduce((sum, v) => sum + (v.dinastia || 0), 0);
+        const weekTotalEkaton = filtered.reduce((sum, v) => sum + calcEkatonFromRecord(v), 0);
         
         return `<div class="week-archive-block">
-            <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: <span style="color: var(--gold-dim);">${fmt(weekTotalQty)}x</span> | Dinastia: <span style="color: var(--gold-dim);">${fmt(weekTotalDinastia)} cr</span> | Ekaton (50%): <span style="color: var(--gold-dim);">${fmt(Math.floor(weekTotalDinastia * 0.5))} cr</span></div>
-            <div style="overflow-x:auto;"><table><thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Qty</th><th>Propria</th><th>Dinastia</th><th>Note</th><th>Azione</th></tr></thead>
-            <tbody>${filtered.map(v => `<tr><td style="font-size:0.65rem">${v.dataStr || ''}<br>${v.ora || ''}</td><td>${v.nome || ''}</td><td style="color: var(--gold-dim);">${fmt(v.qty)}</td><td>${fmt(v.propria)}</td><td>${fmt(v.dinastia)}</td><td style="font-size:0.7rem;">${v.note || '-'}</td><td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td></tr>`).join('')}</tbody></table></div></div>`;
+            <div class="week-title">${range} | Vendite: ${filtered.length} | Qty: <span style="color: var(--gold-dim);">${fmt(weekTotalQty)}x</span> | Dinastia: <span style="color: var(--gold-dim);">${fmt(weekTotalDinastia)} cr</span> | Ekaton: <span style="color: var(--gold-dim);">${fmt(Math.floor(weekTotalEkaton))} cr</span></div>
+            <div style="overflow-x:auto;"><table><thead><tr><th>Data/Ora</th><th>Vampiro</th><th>Materiale</th><th>Qty</th><th>Propria</th><th>Dinastia</th><th>Ekaton</th><th>Note</th><th>Azione</th></tr></thead>
+            <tbody>${filtered.map(v => `<tr>
+                <td style="font-size:0.65rem">${v.dataStr || ''}<br>${v.ora || ''}</td>
+                <td>${v.nome || ''}</td>
+                <td style="color:var(--gold-accent)">${v.materiale || '—'}</td>
+                <td style="color: var(--gold-dim);">${fmt(v.qty)}</td>
+                <td>${fmt(v.propria)}</td>
+                <td>${fmt(v.dinastia)}</td>
+                <td style="color:var(--gold-dim)">${fmt(Math.floor(calcEkatonFromRecord(v)))}</td>
+                <td style="font-size:0.7rem;">${v.note || '-'}</td>
+                <td><button class="btn-delete" onclick="window.adminDeleteVendita('${v.id}')">X</button></td>
+            </tr>`).join('')}</tbody></table></div></div>`;
     }).join('');
 };
 
@@ -1427,6 +1496,10 @@ window.popolaSelectOggetti = () => {
 };
 
 // --- TIME UTILS ---
+// Settimana ISO: lunedì 00:00 → domenica 23:59.
+// A mezzanotte tra domenica e lunedì cambia la chiave settimana:
+// le sezioni Vendite / Vendita Materiali mostrano solo la settimana corrente
+// (effetto "reset"), mentre i record restano in Firestore e compaiono nello Storico.
 function getWeekYearKey(date) {
     const d = new Date(date.getTime());
     d.setHours(0, 0, 0, 0);
@@ -1447,16 +1520,24 @@ function getWeekRangeLabel(weekKey) {
     return `${ISOweekStart.toLocaleDateString('it-IT', {day:'2-digit', month:'short'})} - ${ISOweekEnd.toLocaleDateString('it-IT', {day:'2-digit', month:'short'})}`;
 }
 
+function calcEkatonFromRecord(v) {
+    if (v.ekaton != null && !isNaN(v.ekaton)) return Number(v.ekaton);
+    const din = Number(v.dinastia || v.vDin || 0);
+    const pEk = (v.pEkaton != null) ? Number(v.pEkaton) : 50;
+    return din * (pEk / 100);
+}
+
 function aggiornaStats() {
     const currentWeekKey = getWeekYearKey(new Date());
     const correnti = vendite.filter(v => v.settimanaEtichetta === currentWeekKey);
     const totaleDinastiaSettimana = correnti.reduce((acc, curr) => acc + (curr.dinastia || 0), 0);
+    const totaleEkatonSett = correnti.reduce((acc, curr) => acc + calcEkatonFromRecord(curr), 0);
     const totaleQtySett = correnti.reduce((acc, curr) => acc + (curr.qty || 0), 0);
     const dinastiaStorico = vendite.reduce((acc, curr) => acc + (curr.dinastia || 0), 0);
-    const ekatonStorico = dinastiaStorico * 0.5;
+    const ekatonStorico = vendite.reduce((acc, curr) => acc + calcEkatonFromRecord(curr), 0);
     
     if(document.getElementById('tot-dinastia-sett')) document.getElementById('tot-dinastia-sett').innerText = fmt(totaleDinastiaSettimana) + " cr";
-    if(document.getElementById('tot-ekaton-sett')) document.getElementById('tot-ekaton-sett').innerText = fmt(Math.floor(totaleDinastiaSettimana * 0.5)) + " cr";
+    if(document.getElementById('tot-ekaton-sett')) document.getElementById('tot-ekaton-sett').innerText = fmt(Math.floor(totaleEkatonSett)) + " cr";
     if(document.getElementById('tot-qty-sett')) document.getElementById('tot-qty-sett').innerText = fmt(totaleQtySett) + "x";
     if(document.getElementById('tot-count-sett')) document.getElementById('tot-count-sett').innerText = correnti.length;
 
@@ -1494,6 +1575,7 @@ function startFirestoreListeners() {
         venditeMateriali = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
         popolaFiltroMateriali(); 
         window.renderMateriali(); 
+        renderClassifiche();
         aggiornaStats(); 
         if (document.getElementById('admin-content').style.display === 'block') {
             if(typeof window.renderAdminMateriali === 'function') window.renderAdminMateriali(); 
@@ -1511,6 +1593,12 @@ function startFirestoreListeners() {
         itemImagesLib = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         if (typeof window.renderItemImagesLibrary === 'function') window.renderItemImagesLibrary();
         if (typeof window.renderItemImageSelects === 'function') window.renderItemImageSelects();
+    });
+
+    onSnapshot(collection(db, "tipi_materiale"), (snapshot) => {
+        tipiMateriale = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        window.popolaSelectTipiMateriale();
+        if (typeof window.renderAdminTipiMateriale === 'function') window.renderAdminTipiMateriale();
     });
 
     onSnapshot(collection(db, "dungeon"), (snapshot) => { 
@@ -1675,6 +1763,223 @@ window.uploadItemImagesFromInput = async function() {
         if (btn) { btn.disabled = false; btn.textContent = 'Carica PNG'; }
     }
 };
+
+// --- TIPI MATERIALE (config admin) ---
+// % Propria e % Dinastia sono entrambe modificabili (si completano a 100)
+window.syncPercFromPropria = () => {
+    const pro = parseFloat(document.getElementById('adm-mat-perc-pro')?.value);
+    const dinEl = document.getElementById('adm-mat-perc-din');
+    if (dinEl && !isNaN(pro)) dinEl.value = Math.max(0, Math.min(100, 100 - pro));
+};
+window.syncPercFromDinastia = () => {
+    const din = parseFloat(document.getElementById('adm-mat-perc-din')?.value);
+    const proEl = document.getElementById('adm-mat-perc-pro');
+    if (proEl && !isNaN(din)) proEl.value = Math.max(0, Math.min(100, 100 - din));
+};
+window.syncPercDinastia = window.syncPercFromPropria;
+
+window.resetFormTipoMateriale = () => {
+    const ids = ['adm-mat-nome','adm-mat-prezzo','adm-mat-edit-id'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    if (document.getElementById('adm-mat-perc-pro')) document.getElementById('adm-mat-perc-pro').value = 40;
+    if (document.getElementById('adm-mat-perc-din')) document.getElementById('adm-mat-perc-din').value = 60;
+    if (document.getElementById('adm-mat-perc-ekaton')) document.getElementById('adm-mat-perc-ekaton').value = 50;
+    if (document.getElementById('adm-mat-sez-vendite')) document.getElementById('adm-mat-sez-vendite').checked = true;
+    if (document.getElementById('adm-mat-sez-materiali')) document.getElementById('adm-mat-sez-materiali').checked = true;
+};
+
+window.salvaTipoMateriale = async () => {
+    const nome = (document.getElementById('adm-mat-nome')?.value || '').trim();
+    const prezzo = parseFloat(document.getElementById('adm-mat-prezzo')?.value);
+    let percPro = parseFloat(document.getElementById('adm-mat-perc-pro')?.value);
+    let percDin = parseFloat(document.getElementById('adm-mat-perc-din')?.value);
+    const percEkaton = parseFloat(document.getElementById('adm-mat-perc-ekaton')?.value);
+    const sezVendite = !!document.getElementById('adm-mat-sez-vendite')?.checked;
+    const sezMateriali = !!document.getElementById('adm-mat-sez-materiali')?.checked;
+    const editId = (document.getElementById('adm-mat-edit-id')?.value || '').trim();
+
+    if (!nome) return vampireToast('Nome materiale obbligatorio.', 'error');
+    if (isNaN(prezzo) || prezzo < 0) return vampireToast('Prezzo unitario non valido.', 'error');
+    if (isNaN(percPro) || percPro < 0 || percPro > 100) return vampireToast('% Propria non valida (0-100).', 'error');
+    if (isNaN(percDin) || percDin < 0 || percDin > 100) return vampireToast('% Dinastia non valida (0-100).', 'error');
+    if (isNaN(percEkaton) || percEkaton < 0 || percEkaton > 100) return vampireToast('% Ekaton non valida (0-100).', 'error');
+    // Se non sommano a 100, normalizza mantenendo i valori relativi
+    const sumPerc = percPro + percDin;
+    if (Math.abs(sumPerc - 100) > 0.01) {
+        if (sumPerc <= 0) {
+            percPro = 40; percDin = 60;
+        } else {
+            // Preferisci i valori inseriti: se l'utente ha modificato entrambi, ribilancia sul totale
+            percPro = Math.round((percPro / sumPerc) * 1000) / 10;
+            percDin = Math.round((100 - percPro) * 10) / 10;
+        }
+        vampireToast(`Percentuali ribilanciate a ${percPro}% / ${percDin}% (totale 100%).`, 'info');
+    }
+    if (!sezVendite && !sezMateriali) return vampireToast('Seleziona almeno una sezione di visibilità.', 'error');
+
+    const sezioni = [];
+    if (sezVendite) sezioni.push('vendite');
+    if (sezMateriali) sezioni.push('materiali');
+
+    const data = {
+        nome,
+        prezzoUnitario: prezzo,
+        percPropria: percPro,
+        percDinastia: percDin,
+        percEkaton,
+        sezioni,
+        attivo: true,
+        updatedAt: Date.now()
+    };
+
+    try {
+        if (editId) {
+            await setDoc(doc(db, 'tipi_materiale', editId), data, { merge: true });
+            vampireToast('Tipo materiale aggiornato.', 'success');
+        } else {
+            data.createdAt = Date.now();
+            await addDoc(collection(db, 'tipi_materiale'), data);
+            vampireToast('Tipo materiale creato.', 'success');
+        }
+        window.resetFormTipoMateriale();
+    } catch (err) {
+        console.error(err);
+        vampireToast('Errore salvataggio: ' + (err.message || err), 'error');
+    }
+};
+
+window.caricaTipoMaterialePerEdit = (id) => {
+    const t = tipiMateriale.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('adm-mat-edit-id').value = t.id;
+    document.getElementById('adm-mat-nome').value = t.nome || '';
+    document.getElementById('adm-mat-prezzo').value = t.prezzoUnitario ?? '';
+    document.getElementById('adm-mat-perc-pro').value = t.percPropria ?? 40;
+    document.getElementById('adm-mat-perc-din').value = t.percDinastia ?? 60;
+    document.getElementById('adm-mat-perc-ekaton').value = t.percEkaton ?? 50;
+    document.getElementById('adm-mat-sez-vendite').checked = (t.sezioni || []).includes('vendite');
+    document.getElementById('adm-mat-sez-materiali').checked = (t.sezioni || []).includes('materiali');
+    vampireToast('Dati caricati. Modifica e premi Salva Tipo.', 'info');
+};
+
+window.eliminaTipoMateriale = async (id) => {
+    const res = await Swal.fire({
+        title: 'Eliminare questo tipo?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#8b0000',
+        background: '#111',
+        color: '#fff'
+    });
+    if (!res.isConfirmed) return;
+    try {
+        await deleteDoc(doc(db, 'tipi_materiale', id));
+        vampireToast('Tipo rimosso.', 'success');
+    } catch (err) {
+        vampireToast('Errore: ' + (err.message || err), 'error');
+    }
+};
+
+window.renderAdminTipiMateriale = () => {
+    const tbody = document.getElementById('admin-tipi-materiale-body');
+    if (!tbody) return;
+    const sorted = [...tipiMateriale].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it'));
+    tbody.innerHTML = sorted.map(t => {
+        const sez = (t.sezioni || []).map(s => s === 'vendite' ? 'Vendite' : 'Materiali').join(', ') || '—';
+        return `<tr>
+            <td><strong>${t.nome || ''}</strong></td>
+            <td style="color:var(--gold-dim)">${fmt(t.prezzoUnitario)} cr</td>
+            <td>${t.percPropria ?? 0}% / ${t.percDinastia ?? 0}%</td>
+            <td>${t.percEkaton ?? 50}%</td>
+            <td style="font-size:0.65rem;">${sez}</td>
+            <td>
+                <button class="btn-delete" style="border-color:var(--gold-accent);color:var(--gold-accent);margin-right:4px;" onclick="window.caricaTipoMaterialePerEdit('${t.id}')">Modifica</button>
+                <button class="btn-delete" onclick="window.eliminaTipoMateriale('${t.id}')">Elimina</button>
+            </td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" style="opacity:0.5;text-align:center;">Nessun tipo configurato. Aggiungine uno sopra.</td></tr>';
+};
+
+window.popolaSelectTipiMateriale = () => {
+    const venditeSel = document.getElementById('vamp-tipo-mat');
+    const matSel = document.getElementById('mat-tipo-select');
+    const attivi = tipiMateriale.filter(t => t.attivo !== false);
+
+    if (venditeSel) {
+        const prev = venditeSel.value;
+        const opts = attivi.filter(t => (t.sezioni || []).includes('vendite'))
+            .sort((a,b) => (a.nome||'').localeCompare(b.nome||'', 'it'));
+        venditeSel.innerHTML = '<option value="">— Seleziona —</option>' +
+            opts.map(t => `<option value="${t.id}">${t.nome} (${fmt(t.prezzoUnitario)} cr)</option>`).join('');
+        if (prev && [...venditeSel.options].some(o => o.value === prev)) venditeSel.value = prev;
+        window.updateVenditaPreview();
+    }
+    if (matSel) {
+        const prev = matSel.value;
+        const opts = attivi.filter(t => (t.sezioni || []).includes('materiali'))
+            .sort((a,b) => (a.nome||'').localeCompare(b.nome||'', 'it'));
+        matSel.innerHTML = '<option value="">— Seleziona materiale —</option>' +
+            opts.map(t => `<option value="${t.id}">${t.nome} (${fmt(t.prezzoUnitario)} cr)</option>`).join('');
+        if (prev && [...matSel.options].some(o => o.value === prev)) matSel.value = prev;
+        window.updateMatPreview();
+    }
+};
+
+window.onVenditaTipoChange = () => window.updateVenditaPreview();
+window.onMatTipoChange = () => window.updateMatPreview();
+
+window.updateVenditaPreview = () => {
+    const tipoId = document.getElementById('vamp-tipo-mat')?.value || '';
+    const qty = parseFloat(document.getElementById('vamp-qty')?.value) || 0;
+    const cfg = tipiMateriale.find(t => t.id === tipoId);
+    const unEl = document.getElementById('vamp-preview-un');
+    const totEl = document.getElementById('vamp-preview-tot');
+    const proEl = document.getElementById('vamp-preview-pro');
+    const dinEl = document.getElementById('vamp-preview-din');
+    if (!cfg) {
+        if (unEl) unEl.textContent = '—';
+        if (totEl) totEl.textContent = '—';
+        if (proEl) proEl.textContent = '—';
+        if (dinEl) dinEl.textContent = '—';
+        return;
+    }
+    const un = Number(cfg.prezzoUnitario) || 0;
+    const tot = un * qty;
+    const pro = tot * ((Number(cfg.percPropria) || 0) / 100);
+    const din = tot * ((Number(cfg.percDinastia) || 0) / 100);
+    const ek = din * ((Number(cfg.percEkaton) || 50) / 100);
+    if (unEl) unEl.textContent = fmt(un) + ' cr';
+    if (totEl) totEl.textContent = fmt(tot) + ' cr';
+    if (proEl) proEl.textContent = fmt(pro) + ' cr';
+    if (dinEl) dinEl.textContent = fmt(din) + ' / ' + fmt(ek) + ' cr';
+};
+
+window.updateMatPreview = () => {
+    const tipoId = document.getElementById('mat-tipo-select')?.value || '';
+    const qty = parseFloat(document.getElementById('mat-qty')?.value) || 0;
+    const cfg = tipiMateriale.find(t => t.id === tipoId);
+    const unEl = document.getElementById('mat-preview-un');
+    const totEl = document.getElementById('mat-preview-tot');
+    const splitEl = document.getElementById('mat-preview-split');
+    if (!cfg) {
+        if (unEl) unEl.textContent = '—';
+        if (totEl) totEl.textContent = '—';
+        if (splitEl) splitEl.textContent = '—';
+        return;
+    }
+    const un = Number(cfg.prezzoUnitario) || 0;
+    const tot = un * qty;
+    const pro = tot * ((Number(cfg.percPropria) || 0) / 100);
+    const din = tot * ((Number(cfg.percDinastia) || 0) / 100);
+    const ek = din * ((Number(cfg.percEkaton) || 50) / 100);
+    if (unEl) unEl.textContent = fmt(un) + ' cr';
+    if (totEl) totEl.textContent = fmt(tot) + ' cr';
+    if (splitEl) splitEl.textContent = `${fmt(pro)} / ${fmt(din)} / ${fmt(ek)}`;
+};
+
+// Legacy stubs (vecchi controlli rimossi dall'UI)
+window.toggleTipoVendita = () => {};
+window.updateMatTot = () => window.updateMatPreview();
 
 // --- PROTEZIONE INTERFACCIA ---
 document.addEventListener('contextmenu', event => event.preventDefault());
