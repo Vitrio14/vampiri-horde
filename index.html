@@ -287,7 +287,7 @@
     <nav>
         <div class="logo-container">
             <img src="logo.png" alt="Logo" class="logo-img" id="main-logo" >
-            <h1>Horde RP <span style="font-weight:300; opacity:0.4; margin:0 5px;">|</span> Gestionale Vampiri</h1>
+            <h1>Horde RP <span style="font-weight:300; opacity:0.4; margin:0 5px;">|</span> Vampiri</h1>
         </div>
         <div class="nav-links">
             <div class="nav-link active" onclick="window.showSection('generale')">Generale</div>
@@ -299,10 +299,13 @@
             <div class="nav-link" onclick="window.showSection('dungeon')">Dungeon</div>
             <div class="nav-link" onclick="window.showSection('conquiste')">Conquiste</div>
             <div class="nav-link" onclick="window.showSection('gestione')">Gestione</div>
-            <a href="https://conquiste-vampiri.vitriotv.com" target="_blank" class="nav-link">⚔️</a>
             <a href="https://postimages.org" target="_blank" class="nav-link">Foto</a>
-            <a href="https://docs.google.com/document/d/1L3r3aqR_1Yce50MWRaQd5QEc9lyu1Qdr0IczYxeUiBY/edit?usp=sharing" target="_blank" class="nav-link">Manuale</a>
-            <div class="nav-link" onclick="window.logoutVampiro()" style="color: var(--withdraw-red); border-left: 1px solid #33333300; margin-left: 12px;">Esci</div>
+            <a href="https://conquiste-vampiri.vitriotv.com" target="_blank" class="nav-link">⚔️</a>
+            <a href="https://horde-bg-vampiri.vitriotv.com" target="_blank" class="nav-link">BG</a>
+            <a href="https://gm-horde.vitriotv.com" target="_blank" class="nav-link">GM</a>
+        </div>
+        <div class="nav-logout">
+            <div class="nav-link" onclick="window.logoutVampiro()" style="color: var(--withdraw-red);">Esci</div>
         </div>
     </nav>
 
@@ -847,19 +850,30 @@
                             <div class="form-group" style="margin:0"><label>Password</label><input type="text" id="admin-vamp-password" placeholder="Password accesso"></div>
                         </div>
                         <div style="margin-bottom: 20px;">
-                            <label style="display:block; margin-bottom:10px; color: var(--gold-dim); font-size:0.75rem;">Permessi Sezioni (cosa può vedere il membro)</label>
-                            <div id="admin-permessi-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; font-size: 0.8rem;">
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="generale" checked> Generale</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="vendite" checked> Vendite</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="materiali" checked> Vendita Materiali</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="saldo" checked> Saldo</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="calcolo"> Calcolo</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="inventario" checked> Inventario</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="dungeon" checked> Dungeon</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="conquiste" checked> Conquiste</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="conquiste-ext">⚔️</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="foto"> Foto</label>
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="perm-check" value="manuale"> Manuale</label>
+                            <label style="display:block; margin-bottom:12px; color: var(--gold-dim); font-size:0.75rem; letter-spacing:1px;">Permessi sezioni (cosa può vedere il membro)</label>
+                            <div id="admin-permessi-checkboxes" class="permessi-grid">
+                                <div class="permessi-group">
+                                    <span class="permessi-group-title">Sezioni interne</span>
+                                    <div class="permessi-group-items">
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="generale" checked> Generale</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="vendite" checked> Vendite</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="materiali" checked> Vendita Materiali</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="saldo" checked> Saldo</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="calcolo"> Calcolo</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="inventario" checked> Inventario</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="dungeon" checked> Dungeon</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="conquiste" checked> Conquiste</label>
+                                    </div>
+                                </div>
+                                <div class="permessi-group">
+                                    <span class="permessi-group-title">Link esterni</span>
+                                    <div class="permessi-group-items">
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="foto"> Foto</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="conquiste-ext"> ⚔️ Conquiste Ext</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="bg"> BG</label>
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="gm"> GM</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <button onclick="window.aggiungiVampiro()" style="width: auto; padding: 14px 25px;">Aggiungi / Aggiorna Membro</button>

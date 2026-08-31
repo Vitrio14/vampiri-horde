@@ -53,7 +53,8 @@ const SEZIONI = {
     gestione: { id: 'gestione', label: 'Gestione' },
     'conquiste-ext': { id: 'conquiste-ext', label: '⚔️' },
     foto: { id: 'foto', label: 'Foto' },
-    manuale: { id: 'manuale', label: 'Manuale' }
+    bg: { id: 'bg', label: 'BG' },
+    gm: { id: 'gm', label: 'GM' }
 };
 
 // --- UTILS ---
@@ -131,7 +132,7 @@ window.unlockSite = async () => {
         }
         
         applyPermissions();
-        const firstPerm = currentUser.permessi.find(p => SEZIONI[p] && p !== 'gestione' && !p.includes('ext') && p !== 'foto' && p !== 'manuale') || 'generale';
+        const firstPerm = currentUser.permessi.find(p => SEZIONI[p] && p !== 'gestione' && !p.includes('ext') && p !== 'foto' && p !== 'bg' && p !== 'gm') || 'generale';
         window.showSection(firstPerm);
         vampireToast(`Benvenuto, ${currentUser.nome}.`, "success");
         
@@ -233,8 +234,10 @@ function applyPermissions() {
             a.style.display = (isAdmin || perm.includes('conquiste-ext')) ? '' : 'none';
         } else if (href.includes('postimages')) {
             a.style.display = (isAdmin || perm.includes('foto')) ? '' : 'none';
-        } else if (href.includes('docs.google.com')) {
-            a.style.display = (isAdmin || perm.includes('manuale')) ? '' : 'none';
+        } else if (href.includes('horde-bg-vampiri') || href.includes('bg-vampiri')) {
+            a.style.display = (isAdmin || perm.includes('bg')) ? '' : 'none';
+        } else if (href.includes('gm-horde') || href.includes('/gm')) {
+            a.style.display = (isAdmin || perm.includes('gm')) ? '' : 'none';
         }
     });
 
