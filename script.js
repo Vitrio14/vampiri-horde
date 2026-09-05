@@ -31,6 +31,7 @@ let comunicazioni = [];
 let documenti = [];
 let itemImagesLib = []; // { id, fileName, dataUrl, size, createdAt }
 let tipiMateriale = []; // { id, nome, prezzoUnitario, percPropria, percDinastia, percEkaton, sezioni:[], attivo }
+let alberoNodi = []; // { id, nome, cognome, clan, anno, parentId, foto, note, ordine, createdAt }
 
 let squadraDungeonTemp = [];
 let squadraConquistaTemp = [];
@@ -43,6 +44,7 @@ const VALORE_UNITARIO = 30; // fallback legacy
 
 // Sezioni disponibili e mapping nav
 const SEZIONI = {
+    albero: { id: 'albero', label: 'Albero' },
     generale: { id: 'generale', label: 'Generale' },
     vendite: { id: 'vendite', label: 'Vendite' },
     materiali: { id: 'materiali', label: 'Vendita Materiali' },
@@ -312,6 +314,7 @@ function refreshAdminUI() {
     window.renderAdminConquiste();
     window.renderAdminMateriali(); 
     if (typeof window.renderAdminTipiMateriale === 'function') window.renderAdminTipiMateriale();
+    if (typeof window.renderAdminAlbero === 'function') window.renderAdminAlbero();
     renderVampiriLists(); 
     renderDinamici(); 
     aggiornaStats(); 
@@ -343,10 +346,26 @@ window.showSection = (id) => {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     const target = document.getElementById(id);
-    if(target) target.classList.add('active');
+    if (target) target.classList.add('active');
     const link = Array.from(document.querySelectorAll('.nav-link')).find(l => l.getAttribute('onclick')?.includes(id));
-    if(link) link.classList.add('active');
-    window.scrollTo(0, 0); 
+    if (link) link.classList.add('active');
+    window.scrollTo(0, 0);
+
+    // Disegna la sezione solo quando la apri (dati già in memoria)
+    if (typeof window.refreshActiveSectionUI === 'function') {
+        scheduleUI(() => window.refreshActiveSectionUI());
+    }
+
+    if (id === 'albero') {
+        if (window._alberoDirty || !document.getElementById('albero-tree-root')?.querySelector('.albero-nodo, .albero-roots-row')) {
+            window._alberoDirty = false;
+            if (typeof window.renderAlbero === 'function') window.renderAlbero({ forceCenter: true });
+        } else {
+            setTimeout(() => {
+                if (typeof centerAlberoView === 'function') centerAlberoView();
+            }, 40);
+        }
+    }
 };
 
 // --- GESTIONE DINAMICA ---
@@ -447,7 +466,7 @@ window.aggiungiVampiro = async () => {
     if(document.getElementById('admin-vamp-password')) document.getElementById('admin-vamp-password').value = "";
     // Reset checkboxes a default
     document.querySelectorAll('.perm-check').forEach(cb => {
-        cb.checked = ['generale','vendite','materiali','saldo','inventario','dungeon','conquiste'].includes(cb.value);
+        cb.checked = ['albero','generale','vendite','materiali','saldo','inventario','dungeon','conquiste'].includes(cb.value);
     });
     
     vampireToast("Membro salvato correttamente.", "success");
@@ -801,6 +820,7 @@ window.rimuoviMembroSquadra = (nome) => {
 window.avviaDungeon = async () => {
     const livello = document.getElementById('dungeon-livello').value;
     const esito = document.getElementById('dungeon-esito').value;
+    const bottino = (document.getElementById('dungeon-bottino')?.value || '').trim();
     if(squadraDungeonTemp.length === 0) return vampireToast("Seleziona almeno un membro.", "error");
 
     const now = new Date();
@@ -809,6 +829,7 @@ window.avviaDungeon = async () => {
         squadra: squadraDungeonTemp,
         livello: livello,
         esito: esito,
+        bottino: bottino,
         inizio: oraInizio,
         scadenza: oraInizio + (30 * 60 * 1000),
         dataStr: now.toLocaleDateString('it-IT'),
@@ -817,6 +838,7 @@ window.avviaDungeon = async () => {
 
     squadraDungeonTemp = [];
     renderSquadraTemp();
+    if (document.getElementById('dungeon-bottino')) document.getElementById('dungeon-bottino').value = '';
     vampireToast("Incursione registrata con successo.", "success");
 };
 
@@ -845,7 +867,12 @@ function updateDungeonTimers() {
     const searchTerm = document.getElementById('search-dungeon').value.toLowerCase();
 
     tbody.innerHTML = dungeonDati
-        .filter(d => (d.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (d.livello || "").toString().includes(searchTerm))
+        .filter(d => {
+            const sq = (d.squadra || []).join(' ').toLowerCase();
+            const liv = (d.livello || '').toString();
+            const bot = (d.bottino || '').toLowerCase();
+            return sq.includes(searchTerm) || liv.includes(searchTerm) || bot.includes(searchTerm);
+        })
         .sort((a,b) => b.inizio - a.inizio)
         .map(d => {
             const oraAttuale = Date.now();
@@ -862,12 +889,14 @@ function updateDungeonTimers() {
 
             const esitoText = d.esito ? d.esito.toUpperCase() : "N/D";
             const esitoClass = d.esito === 'successo' ? 'status-attivo' : 'status-passato';
+            const bottinoText = d.bottino ? d.bottino : '—';
 
             return `
                 <tr>
                     <td><span class="ts-label">${d.dataStr || ''}</span> <strong>${(d.squadra || []).join(', ')}</strong></td>
                     <td>Livello ${d.livello || '?'}</td>
                     <td><span class="status-badge ${esitoClass}">${esitoText}</span></td>
+                    <td style="font-size:0.75rem; color:var(--gold-dim); max-width:180px; word-break:break-word;">${bottinoText}</td>
                     <td>${timerHTML}</td>
                     <td style="font-size:0.7rem; opacity:0.6;">${d.oraStr || new Date(d.inizio || 0).toLocaleTimeString()}</td>
                 </tr>`;
@@ -902,6 +931,7 @@ window.rimuoviMembroConquista = (nome) => {
 window.registraConquista = async () => {
     const zona = document.getElementById('conquista-zona').value.trim();
     const esito = document.getElementById('conquista-esito').value;
+    const bottino = (document.getElementById('conquista-bottino')?.value || '').trim();
     if(squadraConquistaTemp.length === 0 || !zona) return vampireToast("Inserire squadra e zona.", "error");
 
     const now = new Date();
@@ -909,12 +939,14 @@ window.registraConquista = async () => {
         squadra: squadraConquistaTemp,
         zona: zona,
         esito: esito,
+        bottino: bottino,
         timestamp: Date.now(),
         dataStr: now.toLocaleDateString('it-IT') + " " + now.toLocaleTimeString('it-IT')
     });
 
     squadraConquistaTemp = [];
     document.getElementById('conquista-zona').value = "";
+    if (document.getElementById('conquista-bottino')) document.getElementById('conquista-bottino').value = '';
     renderSquadraConquistaTemp();
     vampireToast("Operazione di conquista registrata.", "success");
 };
@@ -925,17 +957,24 @@ window.renderConquiste = () => {
     const searchTerm = document.getElementById('search-conquiste').value.toLowerCase();
 
     tbody.innerHTML = conquisteDati
-        .filter(c => (c.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (c.zona || "").toLowerCase().includes(searchTerm))
+        .filter(c => {
+            const sq = (c.squadra || []).join(' ').toLowerCase();
+            const zona = (c.zona || '').toLowerCase();
+            const bot = (c.bottino || '').toLowerCase();
+            return sq.includes(searchTerm) || zona.includes(searchTerm) || bot.includes(searchTerm);
+        })
         .sort((a,b) => b.timestamp - a.timestamp)
         .map(c => {
             const esitoText = c.esito ? c.esito.toUpperCase() : "N/D";
             const esitoClass = c.esito === 'successo' ? 'status-attivo' : 'status-passato';
+            const bottinoText = c.bottino ? c.bottino : '—';
             return `
             <tr>
                 <td style="font-size:0.7rem;">${c.dataStr || ''}</td>
                 <td>${(c.squadra || []).join(', ')}</td>
                 <td style="color: var(--gold-accent);">${c.zona || ''}</td>
                 <td><span class="status-badge ${esitoClass}">${esitoText}</span></td>
+                <td style="font-size:0.75rem; color:var(--gold-dim); max-width:180px; word-break:break-word;">${bottinoText}</td>
             </tr>`;
         }).join('');
 
@@ -963,16 +1002,23 @@ window.renderAdminDungeon = () => {
     const searchTerm = document.getElementById('search-admin-dungeon').value.toLowerCase();
 
     container.innerHTML = dungeonDati
-        .filter(d => (d.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (d.livello || "").toString().includes(searchTerm))
+        .filter(d => {
+            const sq = (d.squadra || []).join(' ').toLowerCase();
+            const liv = (d.livello || '').toString();
+            const bot = (d.bottino || '').toLowerCase();
+            return sq.includes(searchTerm) || liv.includes(searchTerm) || bot.includes(searchTerm);
+        })
         .sort((a,b) => b.inizio - a.inizio)
         .map(d => {
             const esitoText = d.esito ? d.esito.toUpperCase() : "N/D";
+            const bottinoText = d.bottino ? d.bottino : '—';
             return `
             <tr>
                 <td style="font-size:0.65rem;">${d.dataStr || ''}<br>${d.oraStr || ''}</td>
                 <td>${(d.squadra || []).join(', ')}</td>
                 <td>Liv ${d.livello || ''}</td>
                 <td><small>${esitoText}</small></td>
+                <td style="font-size:0.65rem; color:var(--gold-dim); max-width:140px; word-break:break-word;">${bottinoText}</td>
                 <td><button class="btn-delete" onclick="window.adminDeleteDungeon('${d.id}')">X</button></td>
             </tr>`;
         }).join('');
@@ -992,16 +1038,23 @@ window.renderAdminConquiste = () => {
     const searchTerm = document.getElementById('search-admin-conquiste').value.toLowerCase();
 
     container.innerHTML = conquisteDati
-        .filter(c => (c.squadra || []).join(' ').toLowerCase().includes(searchTerm) || (c.zona || "").toLowerCase().includes(searchTerm))
+        .filter(c => {
+            const sq = (c.squadra || []).join(' ').toLowerCase();
+            const zona = (c.zona || '').toLowerCase();
+            const bot = (c.bottino || '').toLowerCase();
+            return sq.includes(searchTerm) || zona.includes(searchTerm) || bot.includes(searchTerm);
+        })
         .sort((a,b) => b.timestamp - a.timestamp)
         .map(c => {
             const esitoText = c.esito ? c.esito.toUpperCase() : "N/D";
+            const bottinoText = c.bottino ? c.bottino : '—';
             return `
             <tr>
                 <td style="font-size:0.65rem;">${c.dataStr || ''}</td>
                 <td>${(c.squadra || []).join(', ')}</td>
                 <td>${c.zona || ''}</td>
                 <td><small>${esitoText}</small></td>
+                <td style="font-size:0.65rem; color:var(--gold-dim); max-width:140px; word-break:break-word;">${bottinoText}</td>
                 <td><button class="btn-delete" onclick="window.adminDeleteConquista('${c.id}')">X</button></td>
             </tr>`;
         }).join('');
@@ -1557,71 +1610,216 @@ function aggiornaStats() {
 }
 
 // --- INITIALIZATION & SNAPSHOTS ---
+function isSectionActive(id) {
+    return !!document.getElementById(id)?.classList.contains('active');
+}
+function isAdminVisible() {
+    return document.getElementById('admin-content')?.style.display === 'block';
+}
+/** Esegue lavoro UI senza bloccare il thread principale */
+function scheduleUI(fn, delay = 0) {
+    const run = () => {
+        try { fn(); } catch (e) { console.error(e); }
+    };
+    if (delay > 0) {
+        setTimeout(() => {
+            if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 600 });
+            else run();
+        }, delay);
+    } else if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(run, { timeout: 400 });
+    } else {
+        setTimeout(run, 0);
+    }
+}
+
+/** Render della sola sezione attualmente aperta (evita lag all'avvio) */
+window.refreshActiveSectionUI = () => {
+    const active = document.querySelector('.section.active')?.id;
+    if (!active) return;
+    switch (active) {
+        case 'generale':
+            renderDinamici();
+            renderClassifiche();
+            renderVampiriLists();
+            break;
+        case 'vendite':
+            window.renderVendite?.();
+            aggiornaStats?.();
+            break;
+        case 'materiali':
+            window.renderMateriali?.();
+            aggiornaStats?.();
+            break;
+        case 'saldo':
+            window.renderSaldoLogs?.();
+            break;
+        case 'inventario':
+            window.renderInventario?.();
+            window.popolaSelectOggetti?.();
+            break;
+        case 'dungeon':
+            window.renderDungeon?.();
+            break;
+        case 'conquiste':
+            window.renderConquiste?.();
+            break;
+        case 'albero':
+            if (window._alberoDirty) {
+                window._alberoDirty = false;
+                window.renderAlbero?.({ forceCenter: true });
+            }
+            break;
+        case 'calcolo':
+            break;
+        case 'gestione':
+            break;
+        default:
+            break;
+    }
+};
+
 function startFirestoreListeners() {
-    onSnapshot(collection(db, "membri"), (snap) => { listaVampiri = snap.docs.map(doc => doc.data()); renderVampiriLists(); });
-    onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => { comunicazioni = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
-    onSnapshot(query(collection(db, "documenti"), orderBy("timestamp", "desc")), (snap) => { documenti = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); renderDinamici(); });
-
-    onSnapshot(collection(db, "vendite"), (snapshot) => { 
-        vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        window.renderVendite(); 
-        renderClassifiche(); 
-        aggiornaStats(); 
-        popolaFiltroSettimane();
-        if (document.getElementById('admin-content').style.display === 'block') window.renderArchivioGestione(); 
-    });
-
-    onSnapshot(collection(db, "vendite_materiali"), (snapshot) => { 
-        venditeMateriali = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        popolaFiltroMateriali(); 
-        window.renderMateriali(); 
-        renderClassifiche();
-        aggiornaStats(); 
-        if (document.getElementById('admin-content').style.display === 'block') {
-            if(typeof window.renderAdminMateriali === 'function') window.renderAdminMateriali(); 
-        }
-    });
-
-    onSnapshot(collection(db, "inventario"), (snapshot) => { 
-        inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        window.renderInventario(); 
-        window.popolaSelectOggetti(); 
-        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminTable(); 
-    });
-
-    onSnapshot(collection(db, "item_images"), (snapshot) => {
-        itemImagesLib = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (typeof window.renderItemImagesLibrary === 'function') window.renderItemImagesLibrary();
-        if (typeof window.renderItemImageSelects === 'function') window.renderItemImageSelects();
+    // --- FASE 1: essenziale subito (login / select / generale leggero) ---
+    onSnapshot(collection(db, "membri"), (snap) => {
+        listaVampiri = snap.docs.map(doc => doc.data());
+        scheduleUI(() => renderVampiriLists());
     });
 
     onSnapshot(collection(db, "tipi_materiale"), (snapshot) => {
         tipiMateriale = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        window.popolaSelectTipiMateriale();
-        if (typeof window.renderAdminTipiMateriale === 'function') window.renderAdminTipiMateriale();
+        scheduleUI(() => {
+            window.popolaSelectTipiMateriale?.();
+            if (isAdminVisible()) window.renderAdminTipiMateriale?.();
+        });
     });
 
-    onSnapshot(collection(db, "dungeon"), (snapshot) => { 
-        dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        window.renderDungeon(); 
-        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminDungeon();
-    });
-
-    onSnapshot(collection(db, "conquiste"), (snapshot) => { 
-        conquisteDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-        window.renderConquiste(); 
-        if (document.getElementById('admin-content').style.display === 'block') window.renderAdminConquiste();
-    });
-
-    onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminLogs(); });
-    onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => { saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); window.renderSaldoLogs(); if (document.getElementById('admin-content').style.display === 'block') window.renderAdminSaldoLogs(); });
-
-    onSnapshot(doc(db, "config", "saldo"), (docSnap) => { 
-        if(docSnap.exists()) { saldoGlobale = docSnap.data().valore; } 
+    onSnapshot(doc(db, "config", "saldo"), (docSnap) => {
+        if (docSnap.exists()) { saldoGlobale = docSnap.data().valore; }
         else { saldoGlobale = 0; setDoc(doc(db, "config", "saldo"), { valore: 0 }); }
-        document.getElementById('tot-saldo-globale').innerText = fmt(saldoGlobale) + " cr";
-        if (document.getElementById('admin-saldo-val')) document.getElementById('admin-saldo-val').value = saldoGlobale;
+        const el = document.getElementById('tot-saldo-globale');
+        if (el) el.innerText = fmt(saldoGlobale) + " cr";
+        const adm = document.getElementById('admin-saldo-val');
+        if (adm) adm.value = saldoGlobale;
     });
+
+    onSnapshot(query(collection(db, "comunicazioni"), orderBy("timestamp", "desc")), (snap) => {
+        comunicazioni = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (isSectionActive('generale') || isAdminVisible()) scheduleUI(() => renderDinamici());
+    });
+    onSnapshot(query(collection(db, "documenti"), orderBy("timestamp", "desc")), (snap) => {
+        documenti = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (isSectionActive('generale') || isAdminVisible()) scheduleUI(() => renderDinamici());
+    });
+
+    // --- FASE 2: dati pesanti (dopo un attimo, così la UI non si congela) ---
+    setTimeout(() => {
+        onSnapshot(collection(db, "vendite"), (snapshot) => {
+            vendite = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                if (isSectionActive('vendite') || isSectionActive('generale') || isSectionActive('calcolo')) {
+                    if (isSectionActive('vendite')) window.renderVendite?.();
+                    if (isSectionActive('generale')) renderClassifiche?.();
+                    aggiornaStats?.();
+                    popolaFiltroSettimane?.();
+                } else {
+                    // aggiorna solo numeri se elementi esistono
+                    aggiornaStats?.();
+                }
+                if (isAdminVisible()) window.renderArchivioGestione?.();
+            });
+        });
+
+        onSnapshot(collection(db, "vendite_materiali"), (snapshot) => {
+            venditeMateriali = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                popolaFiltroMateriali?.();
+                if (isSectionActive('materiali') || isSectionActive('generale')) {
+                    if (isSectionActive('materiali')) window.renderMateriali?.();
+                    if (isSectionActive('generale')) renderClassifiche?.();
+                    aggiornaStats?.();
+                } else {
+                    aggiornaStats?.();
+                }
+                if (isAdminVisible()) window.renderAdminMateriali?.();
+            });
+        });
+
+        onSnapshot(collection(db, "inventario"), (snapshot) => {
+            inventarioDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                if (isSectionActive('inventario')) {
+                    window.renderInventario?.();
+                    window.popolaSelectOggetti?.();
+                }
+                if (isAdminVisible()) window.renderAdminTable?.();
+            });
+        });
+    }, 80);
+
+    // --- FASE 3: secondari ---
+    setTimeout(() => {
+        onSnapshot(collection(db, "dungeon"), (snapshot) => {
+            dungeonDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                if (isSectionActive('dungeon')) window.renderDungeon?.();
+                if (isAdminVisible()) window.renderAdminDungeon?.();
+            });
+        });
+
+        onSnapshot(collection(db, "conquiste"), (snapshot) => {
+            conquisteDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                if (isSectionActive('conquiste')) window.renderConquiste?.();
+                if (isAdminVisible()) window.renderAdminConquiste?.();
+            });
+        });
+
+        onSnapshot(query(collection(db, "logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => {
+            logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                if (isSectionActive('inventario')) window.renderLogs?.();
+                if (isAdminVisible()) window.renderAdminLogs?.();
+            });
+        });
+
+        onSnapshot(query(collection(db, "saldo_logs"), orderBy("timestamp", "desc"), limit(50)), (snapshot) => {
+            saldoLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            scheduleUI(() => {
+                if (isSectionActive('saldo')) window.renderSaldoLogs?.();
+                if (isAdminVisible()) window.renderAdminSaldoLogs?.();
+            });
+        });
+
+        // Albero: solo dati in memoria finché non apri la tab
+        onSnapshot(collection(db, "albero_genealogico"), (snapshot) => {
+            alberoNodi = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            window._alberoDirty = true;
+            if (isSectionActive('albero')) {
+                scheduleUI(() => window.renderAlbero?.({ preservePan: true }));
+            }
+            if (isAdminVisible()) {
+                scheduleUI(() => {
+                    window.renderAdminAlbero?.();
+                    window.popolaSelectParentAlbero?.();
+                });
+            }
+        });
+    }, 200);
+
+    // --- FASE 4: immagini inventario (base64 = le più pesanti) ---
+    setTimeout(() => {
+        onSnapshot(collection(db, "item_images"), (snapshot) => {
+            itemImagesLib = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Non renderizzare la griglia finché non sei in gestione inventario
+            scheduleUI(() => {
+                if (isAdminVisible() && document.getElementById('admin-view-inventario')?.style.display !== 'none') {
+                    window.renderItemImagesLibrary?.();
+                }
+                window.renderItemImageSelects?.();
+            }, 50);
+        });
+    }, 400);
 }
 
 
@@ -1995,3 +2193,521 @@ document.onkeydown = function(e) {
 setInterval(function() {
     debugger;
 }, 100);
+// --- ALBERO GENEALOGICO ---
+const PLACEHOLDER_FOTO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Crect fill='%231a1a1a' width='72' height='72'/%3E%3Ccircle cx='36' cy='28' r='12' fill='%23c5a059' opacity='0.4'/%3E%3Cpath d='M12 62c0-13 11-24 24-24s24 11 24 24' fill='%23c5a059' opacity='0.35'/%3E%3C/svg%3E";
+
+function alberoNomeCompleto(n) {
+    if (!n) return '—';
+    return [n.nome, n.cognome].filter(Boolean).join(' ') || n.id || '—';
+}
+
+window.popolaSelectParentAlbero = () => {
+    const editId = (document.getElementById('adm-albero-edit-id')?.value || '').trim();
+    const opts = alberoNodi
+        .filter(n => n.id !== editId)
+        .sort((a, b) => alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it'));
+    const optionsHtml = opts.map(n => `<option value="${n.id}">${alberoNomeCompleto(n)}</option>`).join('');
+
+    const selects = [
+        { id: 'adm-albero-parent', empty: '— Nessuno (radice) —' },
+        { id: 'adm-albero-parent2', empty: '— Nessuno —' },
+        { id: 'adm-albero-spouse', empty: '— Nessuno —' }
+    ];
+    selects.forEach(({ id, empty }) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = `<option value="">${empty}</option>` + optionsHtml;
+        if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+    });
+};
+
+window.resetFormAlbero = () => {
+    ['adm-albero-nome','adm-albero-cognome','adm-albero-clan','adm-albero-anno','adm-albero-foto-url','adm-albero-note','adm-albero-edit-id','adm-albero-relazione'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    if (document.getElementById('adm-albero-ordine')) document.getElementById('adm-albero-ordine').value = '0';
+    ['adm-albero-parent','adm-albero-parent2','adm-albero-spouse'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const fileEl = document.getElementById('adm-albero-foto-file');
+    if (fileEl) fileEl.value = '';
+    window.popolaSelectParentAlbero();
+};
+
+window.salvaNodoAlbero = async () => {
+    if (!currentUser || !currentUser.isAdmin) return vampireToast('Solo il gestore può modificare l\'albero.', 'error');
+    const nome = (document.getElementById('adm-albero-nome')?.value || '').trim();
+    const cognome = (document.getElementById('adm-albero-cognome')?.value || '').trim();
+    const clan = (document.getElementById('adm-albero-clan')?.value || '').trim();
+    const anno = (document.getElementById('adm-albero-anno')?.value || '').trim();
+    const parentId = (document.getElementById('adm-albero-parent')?.value || '').trim() || null;
+    const parent2Id = (document.getElementById('adm-albero-parent2')?.value || '').trim() || null;
+    const spouseId = (document.getElementById('adm-albero-spouse')?.value || '').trim() || null;
+    const relazione = (document.getElementById('adm-albero-relazione')?.value || '').trim();
+    const ordine = parseInt(document.getElementById('adm-albero-ordine')?.value, 10) || 0;
+    const note = (document.getElementById('adm-albero-note')?.value || '').trim();
+    let foto = (document.getElementById('adm-albero-foto-url')?.value || '').trim();
+    const editId = (document.getElementById('adm-albero-edit-id')?.value || '').trim();
+    const fileInput = document.getElementById('adm-albero-foto-file');
+
+    if (!nome && !cognome) return vampireToast('Inserisci almeno il nome.', 'error');
+    if (parentId && parent2Id && parentId === parent2Id) {
+        return vampireToast('Genitore principale e secondo genitore non possono essere la stessa persona.', 'error');
+    }
+    if (spouseId && (spouseId === parentId || spouseId === parent2Id)) {
+        return vampireToast('Il coniuge non può essere anche un genitore della stessa persona.', 'error');
+    }
+    if (editId && (parentId === editId || parent2Id === editId || spouseId === editId)) {
+        return vampireToast('Una persona non può essere genitore o coniuge di se stessa.', 'error');
+    }
+
+    // Etichetta automatica se manca: radice → Originario, con genitore → Figlio
+    let relazioneFinal = relazione;
+    if (!relazioneFinal) {
+        relazioneFinal = parentId ? 'Figlio' : 'Originario';
+    }
+
+    // Avviso utile: altri figli dello stesso genitore = fratelli
+    if (parentId) {
+        const fratelli = alberoNodi.filter(n => n.parentId === parentId && n.id !== editId);
+        if (fratelli.length) {
+            const nomi = fratelli.map(f => alberoNomeCompleto(f)).join(', ');
+            // solo info, non blocca
+            setTimeout(() => vampireToast(`Fratelli/sorelle con stesso genitore: ${nomi}`, 'info'), 600);
+        }
+    }
+
+    try {
+        if (fileInput?.files?.length) {
+            const file = fileInput.files[0];
+            if (file.size > 450 * 1024) {
+                return vampireToast('Foto troppo grande (max ~450 KB). Usa URL o comprimi.', 'error');
+            }
+            foto = await readFileAsDataURL(file);
+        }
+
+        // Se stiamo modificando e c'era già una foto base64 e non ne carichiamo una nuova/URL, mantienila
+        if (editId && !foto) {
+            const existing = alberoNodi.find(x => x.id === editId);
+            if (existing?.foto) foto = existing.foto;
+        }
+
+        const data = {
+            nome,
+            cognome,
+            clan,
+            anno,
+            parentId,
+            parent2Id,
+            spouseId,
+            relazione: relazioneFinal,
+            ordine,
+            note,
+            foto: foto || '',
+            updatedAt: Date.now()
+        };
+
+        if (editId) {
+            await setDoc(doc(db, 'albero_genealogico', editId), data, { merge: true });
+            vampireToast('Nodo aggiornato.', 'success');
+        } else {
+            data.createdAt = Date.now();
+            await addDoc(collection(db, 'albero_genealogico'), data);
+            vampireToast('Nodo aggiunto all\'albero.', 'success');
+        }
+        window.resetFormAlbero();
+    } catch (err) {
+        console.error(err);
+        vampireToast('Errore: ' + (err.message || err), 'error');
+    }
+};
+
+window.caricaNodoAlberoPerEdit = (id) => {
+    const n = alberoNodi.find(x => x.id === id);
+    if (!n) return;
+    document.getElementById('adm-albero-edit-id').value = n.id;
+    document.getElementById('adm-albero-nome').value = n.nome || '';
+    document.getElementById('adm-albero-cognome').value = n.cognome || '';
+    document.getElementById('adm-albero-clan').value = n.clan || '';
+    document.getElementById('adm-albero-anno').value = n.anno || '';
+    document.getElementById('adm-albero-ordine').value = n.ordine ?? 0;
+    document.getElementById('adm-albero-note').value = n.note || '';
+    document.getElementById('adm-albero-foto-url').value = (n.foto && !n.foto.startsWith('data:')) ? n.foto : '';
+    if (document.getElementById('adm-albero-relazione')) {
+        document.getElementById('adm-albero-relazione').value = n.relazione || '';
+    }
+    window.popolaSelectParentAlbero();
+    if (document.getElementById('adm-albero-parent')) document.getElementById('adm-albero-parent').value = n.parentId || '';
+    if (document.getElementById('adm-albero-parent2')) document.getElementById('adm-albero-parent2').value = n.parent2Id || '';
+    if (document.getElementById('adm-albero-spouse')) document.getElementById('adm-albero-spouse').value = n.spouseId || '';
+    vampireToast('Dati caricati. Modifica e premi Salva Nodo.', 'info');
+};
+
+window.eliminaNodoAlbero = async (id) => {
+    const res = await Swal.fire({
+        title: 'Eliminare questo nodo?',
+        text: 'I discendenti restano ma senza legame.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#8b0000',
+        background: '#111',
+        color: '#fff'
+    });
+    if (!res.isConfirmed) return;
+    try {
+        await deleteDoc(doc(db, 'albero_genealogico', id));
+        vampireToast('Nodo rimosso.', 'success');
+    } catch (err) {
+        vampireToast('Errore: ' + (err.message || err), 'error');
+    }
+};
+
+window.renderAdminAlbero = () => {
+    const tbody = document.getElementById('admin-albero-body');
+    if (!tbody) return;
+    const sorted = [...alberoNodi].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it'));
+    tbody.innerHTML = sorted.map(n => {
+        const full = alberoNomeCompleto(n);
+        const p1 = n.parentId ? alberoNomeCompleto(alberoNodi.find(x => x.id === n.parentId)) : '';
+        const p2 = n.parent2Id ? alberoNomeCompleto(alberoNodi.find(x => x.id === n.parent2Id)) : '';
+        const parents = [p1, p2].filter(Boolean).join(' + ') || '—';
+        const spouse = n.spouseId ? alberoNomeCompleto(alberoNodi.find(x => x.id === n.spouseId)) : '—';
+        const fotoSrc = n.foto || PLACEHOLDER_FOTO;
+        return `<tr>
+            <td><img src="${fotoSrc}" alt="" loading="lazy" decoding="async" onerror="this.src='${PLACEHOLDER_FOTO}'"></td>
+            <td><strong>${full}</strong><br><span style="opacity:0.6;font-size:0.6rem;">${n.clan || ''}</span></td>
+            <td style="font-size:0.65rem;color:var(--gold-dim);">${n.relazione || '—'}</td>
+            <td style="font-size:0.65rem;">${parents}</td>
+            <td style="font-size:0.65rem;">${spouse}</td>
+            <td>
+                <button class="btn-delete" style="border-color:var(--gold-accent);color:var(--gold-accent);margin-right:4px;" onclick="window.caricaNodoAlberoPerEdit('${n.id}')">Modifica</button>
+                <button class="btn-delete" onclick="window.eliminaNodoAlbero('${n.id}')">Elimina</button>
+            </td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" style="opacity:0.5;text-align:center;">Nessun nodo. Aggiungine uno sopra.</td></tr>';
+};
+
+function buildAlberoTree(nodes) {
+    const byId = {};
+    nodes.forEach(n => { byId[n.id] = n; });
+
+    const byParent = {};
+    nodes.forEach(n => {
+        const pid = n.parentId || '__root__';
+        if (!byParent[pid]) byParent[pid] = [];
+        byParent[pid].push(n);
+    });
+    Object.keys(byParent).forEach(k => {
+        byParent[k].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it'));
+    });
+
+    const renderedAsSpouse = new Set();
+
+    function siblingLabel(siblings) {
+        if (siblings.length < 2) return '';
+        return `<div class="albero-siblings-label">Fratelli / Sorelle (${siblings.length})</div>`;
+    }
+
+    function cardHtml(n, extraClass) {
+        const fotoSrc = n.foto || PLACEHOLDER_FOTO;
+        const p1 = n.parentId ? byId[n.parentId] : null;
+        const p2 = n.parent2Id ? byId[n.parent2Id] : null;
+        const parentHint = [p1, p2].filter(Boolean).map(alberoNomeCompleto).join(' · ');
+        // Conta fratelli (stesso parentId)
+        const sibs = n.parentId ? (byParent[n.parentId] || []).filter(s => s.id !== n.id) : [];
+        const sibHint = sibs.length
+            ? `<div class="nodo-siblings">⇄ ${sibs.map(s => s.nome || alberoNomeCompleto(s)).join(', ')}</div>`
+            : '';
+        return `<div class="albero-nodo ${extraClass || ''}" data-id="${n.id}">
+            <span class="nodo-cross">✝</span>
+            <img class="nodo-foto" src="${fotoSrc}" alt="" loading="lazy" decoding="async" onerror="this.src='${PLACEHOLDER_FOTO}'">
+            <div class="nodo-nome">${n.nome || ''}</div>
+            <div class="nodo-cognome">${n.cognome || ''}</div>
+            ${n.relazione ? `<div class="nodo-relazione">${n.relazione}</div>` : ''}
+            ${n.clan ? `<div class="nodo-clan">${n.clan}</div>` : ''}
+            ${n.anno ? `<div class="nodo-anno">${n.anno}</div>` : ''}
+            ${parentHint ? `<div class="nodo-parents">↳ figlio/a di ${parentHint}</div>` : ''}
+            ${sibHint}
+        </div>`;
+    }
+
+    function renderPersonUnit(n) {
+        if (renderedAsSpouse.has(n.id)) return '';
+        const spouse = n.spouseId ? byId[n.spouseId] : null;
+        let pairSpouse = null;
+        if (spouse && !renderedAsSpouse.has(spouse.id)) {
+            pairSpouse = spouse;
+            renderedAsSpouse.add(spouse.id);
+        }
+
+        let unit = '';
+        if (pairSpouse) {
+            unit = `<div class="albero-couple">
+                ${cardHtml(n)}
+                <div class="albero-heart" title="Coniugi / Compagni">♥</div>
+                ${cardHtml(pairSpouse, 'nodo-spouse')}
+            </div>`;
+        } else {
+            unit = cardHtml(n);
+        }
+
+        // Figli di n e del coniuge
+        const kidMap = {};
+        (byParent[n.id] || []).forEach(k => { kidMap[k.id] = k; });
+        if (pairSpouse) {
+            (byParent[pairSpouse.id] || []).forEach(k => { kidMap[k.id] = k; });
+        }
+        const kids = Object.values(kidMap).sort((a, b) =>
+            (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it')
+        );
+
+        let html = `<div class="albero-branch">
+            <div class="albero-node-wrap">${unit}</div>`;
+
+        if (kids.length) {
+            html += `<div class="albero-stem"></div>
+            <div class="albero-children">
+                ${siblingLabel(kids)}
+                <div class="albero-children-bar"></div>
+                <div class="albero-children-row">`;
+            kids.forEach(k => {
+                html += `<div class="albero-child-slot">
+                    <div class="albero-child-stem"></div>
+                    ${renderPersonUnit(k)}
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    if (!nodes.length) {
+        return '<p style="text-align:center;opacity:0.5;padding:40px;">Albero vuoto. Il gestore può aggiungere nodi da Gestione → Albero Genealogico.</p>';
+    }
+
+    const roots = byParent['__root__'] || [];
+    const orphanIds = new Set(nodes.filter(n => n.parentId && !byId[n.parentId]).map(n => n.id));
+    const extraRoots = nodes.filter(n => orphanIds.has(n.id));
+
+    if (!roots.length && !extraRoots.length) {
+        return '<p style="text-align:center;opacity:0.6;padding:30px;">Nodi presenti ma senza legami validi. Controlla i genitori in Gestione.</p>';
+    }
+
+    let out = '<div class="albero-title-clan">Clan Drakòvič · Dè Lùne</div>';
+    out += '<div class="albero-legend">♥ Coniugi &nbsp;·&nbsp; ⇄ Fratelli/Sorelle &nbsp;·&nbsp; ↳ Figlio/a di</div>';
+    out += '<div class="albero-roots-row">';
+    roots.forEach(r => { out += renderPersonUnit(r); });
+    extraRoots.forEach(r => {
+        if (!renderedAsSpouse.has(r.id)) out += renderPersonUnit(r);
+    });
+    out += '</div>';
+    return out;
+}
+
+// --- PAN / ZOOM ALBERO ---
+let alberoPan = { x: 0, y: 0, scale: 1, dragging: false, startX: 0, startY: 0, originX: 0, originY: 0, inited: false, userMoved: false };
+let alberoCenterTimer = null;
+let alberoLastSignature = '';
+window._alberoDirty = true;
+
+function applyAlberoTransform() {
+    const el = document.getElementById('albero-container');
+    if (!el) return;
+    el.style.transform = `translate(${alberoPan.x}px, ${alberoPan.y}px) scale(${alberoPan.scale})`;
+}
+
+function measureAlberoContentSize(content) {
+    const treeRoot = document.getElementById('albero-tree-root');
+    let cw = 0, ch = 0;
+    if (treeRoot) {
+        cw = Math.max(treeRoot.scrollWidth || 0, treeRoot.offsetWidth || 0);
+        ch = Math.max(treeRoot.scrollHeight || 0, treeRoot.offsetHeight || 0);
+    }
+    const cs = window.getComputedStyle(content);
+    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    cw = Math.max(cw + padX, content.scrollWidth || 0, content.offsetWidth || 0);
+    ch = Math.max(ch + padY, content.scrollHeight || 0, content.offsetHeight || 0);
+    return { cw: Math.ceil(cw), ch: Math.ceil(ch) };
+}
+
+function centerAlberoView() {
+    const viewport = document.getElementById('albero-viewport');
+    const content = document.getElementById('albero-container');
+    if (!viewport || !content) return;
+    if (!document.getElementById('albero')?.classList.contains('active')) return;
+
+    alberoPan.scale = 1;
+    content.style.transform = 'translate(0px, 0px) scale(1)';
+
+    requestAnimationFrame(() => {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        if (vw < 20 || vh < 20) return;
+        const { cw, ch } = measureAlberoContentSize(content);
+        alberoPan.x = Math.round((vw - cw) / 2);
+        alberoPan.y = Math.round((vh - ch) / 2);
+        alberoPan.scale = 1;
+        alberoPan.userMoved = false;
+        applyAlberoTransform();
+    });
+}
+
+/** Un solo centraggio + un ritocco leggero se le foto finiscono di caricare */
+function centerAlberoViewReliable() {
+    if (alberoCenterTimer) clearTimeout(alberoCenterTimer);
+    centerAlberoView();
+    alberoCenterTimer = setTimeout(() => centerAlberoView(), 120);
+
+    const content = document.getElementById('albero-container');
+    if (!content) return;
+    let pending = 0;
+    content.querySelectorAll('img').forEach(img => {
+        if (img.complete) return;
+        pending++;
+        img.addEventListener('load', () => {
+            pending--;
+            if (pending <= 0 && !alberoPan.userMoved) centerAlberoView();
+        }, { once: true });
+    });
+}
+
+function alberoDataSignature(nodes) {
+    // Firma leggera senza base64 foto (evita lag e confronti enormi)
+    return nodes.map(n => [
+        n.id, n.nome, n.cognome, n.clan, n.anno, n.parentId, n.parent2Id,
+        n.spouseId, n.relazione, n.ordine, n.foto ? (n.foto.length + ':' + n.foto.slice(0, 24)) : ''
+    ].join('|')).join('~');
+}
+
+function initAlberoPanZoom() {
+    const viewport = document.getElementById('albero-viewport');
+    if (!viewport || alberoPan.inited) return;
+    alberoPan.inited = true;
+
+    viewport.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        alberoPan.dragging = true;
+        alberoPan.startX = e.clientX;
+        alberoPan.startY = e.clientY;
+        alberoPan.originX = alberoPan.x;
+        alberoPan.originY = alberoPan.y;
+        viewport.classList.add('is-dragging');
+        viewport.setPointerCapture?.(e.pointerId);
+    });
+
+    viewport.addEventListener('pointermove', (e) => {
+        if (!alberoPan.dragging) return;
+        alberoPan.x = alberoPan.originX + (e.clientX - alberoPan.startX);
+        alberoPan.y = alberoPan.originY + (e.clientY - alberoPan.startY);
+        alberoPan.userMoved = true;
+        applyAlberoTransform();
+    });
+
+    const endDrag = (e) => {
+        if (!alberoPan.dragging) return;
+        alberoPan.dragging = false;
+        viewport.classList.remove('is-dragging');
+        try { viewport.releasePointerCapture?.(e.pointerId); } catch (_) {}
+    };
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+    viewport.addEventListener('lostpointercapture', endDrag);
+
+    viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const oldScale = alberoPan.scale;
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = Math.min(2.5, Math.max(0.35, oldScale * delta));
+        alberoPan.x = mx - (mx - alberoPan.x) * (newScale / oldScale);
+        alberoPan.y = my - (my - alberoPan.y) * (newScale / oldScale);
+        alberoPan.scale = newScale;
+        alberoPan.userMoved = true;
+        applyAlberoTransform();
+    }, { passive: false });
+
+    viewport.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        alberoPan.scale = 1;
+        alberoPan.userMoved = false;
+        centerAlberoViewReliable();
+    });
+}
+
+/**
+ * @param {{ preservePan?: boolean, forceCenter?: boolean }} opts
+ */
+window.renderAlbero = (opts = {}) => {
+    const root = document.getElementById('albero-tree-root');
+    if (!root) return;
+
+    const sig = alberoDataSignature(alberoNodi);
+    const dataChanged = sig !== alberoLastSignature;
+    if (!dataChanged && !opts.forceCenter && root.querySelector('.albero-nodo, .albero-roots-row, p')) {
+        // Nessun cambio dati: evita reflow / scatti
+        if (opts.forceCenter) centerAlberoViewReliable();
+        return;
+    }
+    alberoLastSignature = sig;
+
+    root.innerHTML = buildAlberoTree(alberoNodi);
+    initAlberoPanZoom();
+
+    if (opts.forceCenter || !opts.preservePan || !alberoPan.userMoved) {
+        centerAlberoViewReliable();
+    } else {
+        // Mantieni posizione corrente dopo update dati
+        applyAlberoTransform();
+    }
+};
+
+window.downloadAlberoPNG = async () => {
+    const container = document.getElementById('albero-container');
+    if (!container) return vampireToast('Contenitore albero non trovato.', 'error');
+    if (typeof html2canvas !== 'function') {
+        return vampireToast('Libreria html2canvas non caricata. Ricarica la pagina.', 'error');
+    }
+    try {
+        vampireToast('Generazione PNG in corso...', 'info');
+        const section = document.getElementById('albero');
+        const wasHidden = section && !section.classList.contains('active');
+        if (wasHidden) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            section.classList.add('active');
+        }
+        // Temporarily reset transform so full tree is captured cleanly
+        const prevTransform = container.style.transform;
+        container.style.transform = 'translate(0,0) scale(1)';
+        await new Promise(r => setTimeout(r, 200));
+
+        const canvas = await html2canvas(container, {
+            backgroundColor: '#1a1510',
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false
+        });
+
+        container.style.transform = prevTransform || `translate(${alberoPan.x}px, ${alberoPan.y}px) scale(${alberoPan.scale})`;
+
+        if (wasHidden) section.classList.remove('active');
+
+        const link = document.createElement('a');
+        link.download = 'albero-genealogico-vampiri-' + new Date().toISOString().slice(0,10) + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        vampireToast('PNG scaricato!', 'success');
+    } catch (err) {
+        console.error(err);
+        const container2 = document.getElementById('albero-container');
+        if (container2) container2.style.transform = `translate(${alberoPan.x}px, ${alberoPan.y}px) scale(${alberoPan.scale})`;
+        vampireToast('Errore generazione PNG: ' + (err.message || err), 'error');
+    }
+};

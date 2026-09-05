@@ -658,3 +658,414 @@ thead th:first-child, td:first-child, thead th:nth-child(2), td:nth-child(2) { t
 footer { padding: 50px 20px; text-align: center; font-size: 0.7rem; color: #666; letter-spacing: 2px; text-transform: uppercase; border-top: 1px dashed rgba(255,255,255,0.05); margin-top: 40px; }
 footer strong { color: var(--gold-accent); font-weight: 700; transition: var(--transition-smooth); }
 footer:hover strong { color: var(--blood-red); }
+/* --- ALBERO GENEALOGICO --- */
+.albero-viewport {
+    width: 100%;
+    height: min(78vh, 720px);
+    min-height: 420px;
+    overflow: hidden;
+    border: 2px solid rgba(197, 160, 89, 0.35);
+    border-radius: 8px;
+    position: relative;
+    /* Sfondo a tutta l'area del box */
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(139,0,0,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(197,160,89,0.08) 0%, transparent 45%),
+        linear-gradient(180deg, #2a2118 0%, #1a1510 40%, #120e0a 100%);
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.6), 0 0 30px rgba(139,0,0,0.15);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+.albero-viewport::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(197,160,89,0.03) 28px, rgba(197,160,89,0.03) 29px),
+        repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(139,0,0,0.02) 28px, rgba(139,0,0,0.02) 29px);
+    pointer-events: none;
+}
+.albero-viewport.is-dragging {
+    cursor: grabbing;
+}
+.albero-viewport.is-dragging * {
+    pointer-events: none;
+}
+
+.albero-parchment {
+    /* Solo il contenuto (albero): sfondo pieno è sul viewport */
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 28px 36px 36px;
+    width: max-content;
+    height: max-content;
+    min-width: 0;
+    min-height: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    box-shadow: none;
+    will-change: transform;
+    z-index: 1;
+}
+
+.albero-parchment::before {
+    display: none;
+}
+
+.albero-tree {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+    padding: 10px 20px 30px;
+}
+
+.albero-legend {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 18px;
+    letter-spacing: 0.5px;
+    opacity: 0.85;
+}
+
+.albero-roots-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    width: max-content;
+}
+
+.albero-level {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 18px 28px;
+    width: max-content;
+    margin: 12px 0;
+    position: relative;
+}
+
+.albero-branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.albero-node-wrap {
+    position: relative;
+    z-index: 2;
+}
+
+.albero-stem {
+    width: 2px;
+    height: 22px;
+    background: linear-gradient(180deg, var(--gold-dim), var(--blood-red));
+    margin: 0 auto;
+    opacity: 0.85;
+}
+
+.albero-children {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.albero-siblings-label {
+    font-size: 0.55rem;
+    color: var(--gold-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    opacity: 0.9;
+    font-weight: 700;
+}
+
+.albero-children-bar {
+    height: 2px;
+    width: calc(100% - 60px);
+    min-width: 40px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim) 8%, var(--blood-red) 50%, var(--gold-dim) 92%, transparent);
+    margin: 0 auto;
+    opacity: 0.75;
+}
+
+.albero-children-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+    width: max-content;
+    position: relative;
+}
+
+.albero-child-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.albero-child-stem {
+    width: 2px;
+    height: 18px;
+    background: linear-gradient(180deg, var(--blood-red), var(--gold-dim));
+    opacity: 0.8;
+}
+
+.albero-nodo {
+    background: linear-gradient(160deg, rgba(30,25,20,0.95), rgba(12,10,8,0.98));
+    border: 1px solid rgba(197, 160, 89, 0.4);
+    border-radius: 6px;
+    width: 130px;
+    text-align: center;
+    padding: 10px 8px 12px;
+    position: relative;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+.albero-nodo:hover {
+    transform: translateY(-4px);
+    border-color: var(--gold-accent);
+    box-shadow: 0 8px 24px rgba(139,0,0,0.35), 0 0 12px rgba(197,160,89,0.2);
+}
+
+.albero-nodo .nodo-foto {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--gold-dim);
+    margin: 0 auto 8px;
+    display: block;
+    background: #1a1a1a;
+    box-shadow: 0 0 10px rgba(139,0,0,0.4);
+}
+
+.albero-nodo .nodo-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    color: var(--gold-accent);
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 2px;
+    word-break: break-word;
+}
+
+.albero-nodo .nodo-cognome {
+    font-size: 0.65rem;
+    color: var(--text-light);
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.albero-nodo .nodo-clan {
+    font-size: 0.55rem;
+    color: var(--blood-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.albero-nodo .nodo-anno {
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+.albero-nodo .nodo-relazione {
+    font-size: 0.55rem;
+    color: var(--gold-accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 3px 0 2px;
+    padding: 2px 6px;
+    display: inline-block;
+    border: 1px solid rgba(197, 160, 89, 0.35);
+    border-radius: 3px;
+    background: rgba(197, 160, 89, 0.08);
+}
+
+.albero-nodo .nodo-parents {
+    font-size: 0.5rem;
+    color: #888;
+    margin-top: 4px;
+    line-height: 1.2;
+    max-width: 120px;
+    word-break: break-word;
+}
+
+.albero-nodo .nodo-siblings {
+    font-size: 0.48rem;
+    color: var(--gold-dim);
+    margin-top: 3px;
+    line-height: 1.25;
+    max-width: 120px;
+    word-break: break-word;
+    opacity: 0.9;
+}
+
+.albero-nodo .nodo-cross {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    background: var(--blood-red);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,0.2);
+    opacity: 0.85;
+}
+
+.albero-couple {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.albero-heart {
+    color: var(--blood-light);
+    font-size: 1rem;
+    text-shadow: 0 0 8px rgba(139, 0, 0, 0.8);
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.albero-connector {
+    width: 2px;
+    height: 18px;
+    background: linear-gradient(180deg, var(--gold-dim), var(--blood-red));
+    margin: 0 auto;
+    opacity: 0.7;
+}
+
+.albero-title-clan {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: var(--gold-accent);
+    text-align: center;
+    margin: 18px 0 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(139,0,0,0.4);
+    padding-bottom: 6px;
+    width: 100%;
+}
+
+#admin-albero-body td img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--gold-dim);
+}
+
+/* Admin Dungeon / Conquiste: layout intero, tabelle leggibili */
+.admin-dungeon-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    width: 100%;
+    margin-bottom: 25px;
+}
+.admin-dungeon-layout .vamp-card {
+    width: 100%;
+    max-width: 100%;
+}
+.admin-table-scroll {
+    max-height: min(55vh, 520px);
+    overflow: auto;
+}
+.admin-wide-table {
+    width: 100%;
+    min-width: 720px;
+    table-layout: auto;
+}
+.admin-wide-table th,
+.admin-wide-table td {
+    white-space: normal;
+    word-break: break-word;
+    vertical-align: middle;
+}
+.admin-wide-table td:nth-child(2),
+.admin-wide-table th:nth-child(2) {
+    min-width: 140px;
+}
+.admin-wide-table td:nth-child(5),
+.admin-wide-table th:nth-child(5) {
+    min-width: 120px;
+    max-width: 220px;
+}
+
+.scroll-container.admin-table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+/* Form gestione albero — guida compilazione */
+.albero-help-box {
+    background: rgba(139, 0, 0, 0.12);
+    border: 1px solid rgba(197, 160, 89, 0.3);
+    border-left: 3px solid var(--blood-red);
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    font-size: 0.78rem;
+    color: var(--text-light);
+    line-height: 1.55;
+}
+.albero-help-box strong {
+    display: block;
+    color: var(--gold-accent);
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+.albero-help-box ol {
+    margin: 0;
+    padding-left: 18px;
+}
+.albero-help-box li {
+    margin-bottom: 6px;
+}
+.albero-form-step {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: var(--gold-accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 8px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(139, 0, 0, 0.45);
+}
+.albero-form-hint {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin: -4px 0 14px;
+    line-height: 1.4;
+}
+.field-hint {
+    display: block;
+    font-size: 0.62rem;
+    color: #777;
+    margin-top: 6px;
+    line-height: 1.35;
+}

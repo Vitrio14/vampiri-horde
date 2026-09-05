@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script type="module" src="script.js" defer></script>
     
     <link rel="stylesheet" href="style.css">
@@ -290,6 +291,7 @@
             <h1>Horde RP <span style="font-weight:300; opacity:0.4; margin:0 5px;">|</span> Vampiri</h1>
         </div>
         <div class="nav-links">
+            <div class="nav-link" onclick="window.showSection('albero')">Albero</div>
             <div class="nav-link active" onclick="window.showSection('generale')">Generale</div>
             <div class="nav-link" onclick="window.showSection('vendite')">Vendite</div>
             <div class="nav-link" onclick="window.showSection('materiali')">Vendita Materiali</div>
@@ -311,6 +313,31 @@
 
     <div class="container">
         
+        <section id="albero" class="section">
+            <div class="vamp-card" style="padding: 1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+                    <h2 style="margin:0; border:none; padding:0;">🦇 Albero Genealogico</h2>
+                    <button type="button" id="btn-download-albero" onclick="window.downloadAlberoPNG()" style="width:auto; padding:10px 18px; font-size:0.75rem;">
+                        📥 Scarica PNG
+                    </button>
+                </div>
+                <p style="font-size:0.75rem; color:var(--text-dim); margin-bottom:12px; text-align:center;">
+                    Dinastia Vampiri · Clan Drakòvič · Dè Lùne
+                </p>
+                <p style="font-size:0.65rem; color:var(--gold-dim); margin-bottom:12px; text-align:center; opacity:0.8;">
+                    🖱️ Trascina per muoverti · 🔍 Rotella del mouse per zoom · Doppio click per reset
+                </p>
+                <div id="albero-viewport" class="albero-viewport">
+                    <div id="albero-container" class="albero-parchment albero-pannable">
+                        <div id="albero-tree-root" class="albero-tree">
+                            <!-- Renderizzato da JS -->
+                            <p style="text-align:center; opacity:0.5; padding:40px;">Caricamento albero...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="generale" class="section active">
             <div class="vamp-card" style="margin-bottom: 20px;">
                 <h2 style="text-align: center;">🎖️ Classifiche Dinastia</h2>
@@ -704,12 +731,18 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Esito</label>
-                    <select id="dungeon-esito">
-                        <option value="successo">Successo</option>
-                        <option value="fallimento">Fallimento</option>
-                    </select>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Esito</label>
+                        <select id="dungeon-esito">
+                            <option value="successo">Successo</option>
+                            <option value="fallimento">Fallimento</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bottino (cosa hanno preso)</label>
+                        <input type="text" id="dungeon-bottino" placeholder="es. 3x Carbonio, Pile, Armatura...">
+                    </div>
                 </div>
                 <div id="squadra-temporanea" style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;"></div>
                 <button onclick="window.avviaDungeon()">Avvia Incursione (30 min)</button>
@@ -717,7 +750,7 @@
 
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Dungeon in Corso / Storico</h2>
             <div class="search-box">
-                <input type="text" id="search-dungeon" placeholder="Cerca dungeon (squadra o livello)..." onkeyup="window.renderDungeon()">
+                <input type="text" id="search-dungeon" placeholder="Cerca dungeon (squadra, livello o bottino)..." onkeyup="window.renderDungeon()">
             </div>
             <div class="scroll-container">
                 <table>
@@ -726,6 +759,7 @@
                             <th>Squadra</th>
                             <th>Livello</th>
                             <th>Esito</th>
+                            <th>Bottino</th>
                             <th>Timer / Stato</th>
                             <th>Inizio</th>
                         </tr>
@@ -766,12 +800,18 @@
                         <input type="text" id="conquista-zona" placeholder="Esempio: Porto, Periferia...">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Esito</label>
-                    <select id="conquista-esito">
-                        <option value="successo">Successo</option>
-                        <option value="fallimento">Fallimento</option>
-                    </select>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>Esito</label>
+                        <select id="conquista-esito">
+                            <option value="successo">Successo</option>
+                            <option value="fallimento">Fallimento</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Bottino (cosa hanno preso)</label>
+                        <input type="text" id="conquista-bottino" placeholder="es. Armi, Materiali, Documenti...">
+                    </div>
                 </div>
                 <div id="squadra-conquista-temporanea" style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;"></div>
                 <button onclick="window.registraConquista()">Registra Conquista</button>
@@ -779,7 +819,7 @@
 
             <h2 style="font-size: 0.8rem; margin-bottom: 15px;">Log Conquiste</h2>
             <div class="search-box">
-                <input type="text" id="search-conquiste" placeholder="Cerca conquista (squadra o zona)..." onkeyup="window.renderConquiste()">
+                <input type="text" id="search-conquiste" placeholder="Cerca conquista (squadra, zona o bottino)..." onkeyup="window.renderConquiste()">
             </div>
             <div class="scroll-container">
                 <table>
@@ -789,6 +829,7 @@
                             <th>Squadra</th>
                             <th>Zona Conquistata</th>
                             <th>Esito</th>
+                            <th>Bottino</th>
                         </tr>
                     </thead>
                     <tbody id="lista-conquiste"></tbody>
@@ -844,6 +885,10 @@
                         <h3>🧱 Tipi Materiale</h3>
                         <p>Prezzi, percentuali, Ekaton e dove appaiono</p>
                     </div>
+                    <div class="admin-menu-card" onclick="window.apriAdminView('albero')">
+                        <h3>🌳 Albero Genealogico</h3>
+                        <p>Nodi, foto, legami di sangue e download PNG</p>
+                    </div>
                 </div>
 
                 <div id="admin-view-comunicazioni" class="admin-sub-view" style="display: none;">
@@ -887,6 +932,7 @@
                                 <div class="permessi-group">
                                     <span class="permessi-group-title">Sezioni interne</span>
                                     <div class="permessi-group-items">
+                                        <label class="perm-label"><input type="checkbox" class="perm-check" value="albero" checked> Albero</label>
                                         <label class="perm-label"><input type="checkbox" class="perm-check" value="generale" checked> Generale</label>
                                         <label class="perm-label"><input type="checkbox" class="perm-check" value="vendite" checked> Vendite</label>
                                         <label class="perm-label"><input type="checkbox" class="perm-check" value="materiali" checked> Vendita Materiali</label>
@@ -920,7 +966,7 @@
 
                 <div id="admin-view-dungeon" class="admin-sub-view" style="display: none;">
                     <button class="btn-indietro" onclick="window.tornaAdminMenu()">🔙 Torna alla Dashboard</button>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                    <div class="admin-dungeon-layout">
                         <div class="vamp-card">
                             <h2>Gestione Database Dungeon</h2>
                             <div class="stats-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 15px; font-size: 0.6rem;">
@@ -931,9 +977,9 @@
                             <div class="search-box">
                                 <input type="text" id="search-admin-dungeon" placeholder="Filtra dungeon..." onkeyup="window.renderAdminDungeon()">
                             </div>
-                            <div class="scroll-container" style="max-height: 300px;">
-                                <table>
-                                    <thead><tr><th>Data/Ora</th><th>Squadra</th><th>Liv</th><th>Esito</th><th>Azione</th></tr></thead>
+                            <div class="scroll-container admin-table-scroll">
+                                <table class="admin-wide-table">
+                                    <thead><tr><th>Data/Ora</th><th>Squadra</th><th>Liv</th><th>Esito</th><th>Bottino</th><th>Azione</th></tr></thead>
                                     <tbody id="admin-dungeon-body"></tbody>
                                 </table>
                             </div>
@@ -949,9 +995,9 @@
                             <div class="search-box">
                                 <input type="text" id="search-admin-conquiste" placeholder="Filtra conquiste..." onkeyup="window.renderAdminConquiste()">
                             </div>
-                            <div class="scroll-container" style="max-height: 300px;">
-                                <table>
-                                    <thead><tr><th>Data</th><th>Squadra</th><th>Zona</th><th>Esito</th><th>Azione</th></tr></thead>
+                            <div class="scroll-container admin-table-scroll">
+                                <table class="admin-wide-table">
+                                    <thead><tr><th>Data</th><th>Squadra</th><th>Zona</th><th>Esito</th><th>Bottino</th><th>Azione</th></tr></thead>
                                     <tbody id="admin-conquiste-body"></tbody>
                                 </table>
                             </div>
@@ -1155,6 +1201,134 @@
                                     </tr>
                                 </thead>
                                 <tbody id="admin-tipi-materiale-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admin-view-albero" class="admin-sub-view" style="display: none;">
+                    <button class="btn-indietro" onclick="window.tornaAdminMenu()">🔙 Torna alla Dashboard</button>
+                    <div class="vamp-card">
+                        <h2>🌳 Gestione Albero Genealogico</h2>
+
+                        <div class="albero-help-box">
+                            <strong>Come compilare (ordine consigliato)</strong>
+                            <ol>
+                                <li><b>Prima</b> crea le persone in alto nell’albero (Originari / Sire) lasciando <em>Genitore = Nessuno</em>.</li>
+                                <li><b>Poi</b> crea i figli scegliendo il <em>Genitore 1</em> (e se serve Genitore 2). Stesso genitore = <b>fratelli/sorelle</b>.</li>
+                                <li>Per una <b>coppia</b>: su uno dei due scegli l’altro in <em>Coniuge</em> (compaiono affiancati con ♥).</li>
+                                <li>I <b>cugini</b> nascono da soli: figli di due fratelli (stesso nonno, genitori diversi).</li>
+                                <li><em>Ruolo nel sangue</em> è solo un’etichetta (Sire, Childe, Figlio…): la struttura la fa il campo Genitore.</li>
+                            </ol>
+                        </div>
+
+                        <h3 class="albero-form-step">1 · Identità</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 18px;">
+                            <div class="form-group" style="margin:0">
+                                <label>Nome *</label>
+                                <input type="text" id="adm-albero-nome" placeholder="es. Vladamar">
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label>Cognome</label>
+                                <input type="text" id="adm-albero-cognome" placeholder="es. Drakòvič">
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label>Clan</label>
+                                <input type="text" id="adm-albero-clan" placeholder="es. Drakòvič / Dè Lùne">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 22px;">
+                            <div class="form-group" style="margin:0">
+                                <label>Anno / Epoca</label>
+                                <input type="text" id="adm-albero-anno" placeholder="es. 1 Secolo a.C. · Anno 20">
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label>Ordine tra fratelli (0 = primo a sinistra)</label>
+                                <input type="number" id="adm-albero-ordine" value="0" min="0" step="1">
+                            </div>
+                        </div>
+
+                        <h3 class="albero-form-step">2 · Legami di sangue (struttura albero)</h3>
+                        <p class="albero-form-hint">Qui decidi <b>dove</b> appare nella famiglia. Non basta scrivere «Fratello»: devono avere lo stesso genitore.</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;">
+                            <div class="form-group" style="margin:0">
+                                <label>Genitore / Sire principale *</label>
+                                <select id="adm-albero-parent" class="albero-person-select">
+                                    <option value="">— Nessuno (è una radice) —</option>
+                                </select>
+                                <span class="field-hint">Chi lo ha generato o creato. Se vuoto = in cima all’albero.</span>
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label>Secondo genitore (opzionale)</label>
+                                <select id="adm-albero-parent2" class="albero-person-select">
+                                    <option value="">— Nessuno —</option>
+                                </select>
+                                <span class="field-hint">Es. l’altro genitore di sangue o il coniuge del Sire.</span>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 22px;">
+                            <div class="form-group" style="margin:0">
+                                <label>Coniuge / Compagno di sangue</label>
+                                <select id="adm-albero-spouse" class="albero-person-select">
+                                    <option value="">— Nessuno —</option>
+                                </select>
+                                <span class="field-hint">Devono essere già entrambi salvati. Compariranno affiancati con ♥.</span>
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label>Ruolo nel sangue (etichetta)</label>
+                                <select id="adm-albero-relazione">
+                                    <option value="">— Seleziona —</option>
+                                    <option value="Originario">Originario / Fondatore</option>
+                                    <option value="Sire">Sire (creatore)</option>
+                                    <option value="Childe">Childe (creato dal Sire)</option>
+                                    <option value="Figlio">Figlio / Figlia</option>
+                                    <option value="Fratello">Fratello / Sorella</option>
+                                    <option value="Coniuge">Coniuge / Compagno</option>
+                                    <option value="Nipote">Nipote</option>
+                                    <option value="Zio">Zio / Zia</option>
+                                    <option value="Cugino">Cugino / Cugina</option>
+                                    <option value="Alleato">Alleato di sangue</option>
+                                    <option value="Adottato">Adottato / Vincolato</option>
+                                    <option value="Altro">Altro (dettaglio nelle note)</option>
+                                </select>
+                                <span class="field-hint">Solo testo sulla card. La posizione la decide «Genitore».</span>
+                            </div>
+                        </div>
+
+                        <h3 class="albero-form-step">3 · Foto e note</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 18px;">
+                            <div class="form-group" style="margin:0">
+                                <label>Foto (URL o carica file)</label>
+                                <input type="url" id="adm-albero-foto-url" placeholder="https://... oppure carica sotto">
+                                <input type="file" id="adm-albero-foto-file" accept="image/png,image/jpeg,image/*" style="margin-top:8px;">
+                            </div>
+                            <div class="form-group" style="margin:0">
+                                <label>Note / dettaglio relazione</label>
+                                <input type="text" id="adm-albero-note" placeholder="es. Childe di Selene, fratello di Niko…">
+                            </div>
+                        </div>
+
+                        <input type="hidden" id="adm-albero-edit-id" value="">
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+                            <button type="button" onclick="window.salvaNodoAlbero()" style="width:auto; padding:14px 25px;">Salva persona</button>
+                            <button type="button" onclick="window.resetFormAlbero()" style="width:auto; padding:14px 25px; border-color:#555; color:#888;">Annulla / Nuovo</button>
+                            <button type="button" onclick="window.downloadAlberoPNG()" style="width:auto; padding:14px 25px;">📥 Scarica PNG Albero</button>
+                        </div>
+
+                        <h3 class="albero-form-step" style="margin-top:10px;">Persone già nell’albero</h3>
+                        <div class="scroll-container" style="max-height:380px;">
+                            <table style="font-size:0.7rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Foto</th>
+                                        <th>Nome</th>
+                                        <th>Ruolo</th>
+                                        <th>Genitori</th>
+                                        <th>Coniuge</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-albero-body"></tbody>
                             </table>
                         </div>
                     </div>
