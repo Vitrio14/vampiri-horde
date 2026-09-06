@@ -2717,9 +2717,13 @@ function centerAlberoView() {
         const vh = viewport.clientHeight;
         if (vw < 20 || vh < 20) return;
         const { cw, ch } = measureAlberoContentSize(content);
-        alberoPan.x = Math.round((vw - cw) / 2);
-        alberoPan.y = Math.round((vh - ch) / 2);
+        const pad = 24;
+        // Sempre scala 1 all'apertura: box leggibili subito (niente rimpicciolimento)
         alberoPan.scale = 1;
+        // Centra in orizzontale rispetto alla larghezza reale dell'albero
+        alberoPan.x = Math.round((vw - cw) / 2);
+        // Parte sempre dall'alto (radice / primo nodo)
+        alberoPan.y = pad;
         alberoPan.userMoved = false;
         applyAlberoTransform();
     });

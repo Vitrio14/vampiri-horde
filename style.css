@@ -625,7 +625,7 @@ thead th:first-child, td:first-child, thead th:nth-child(2), td:nth-child(2) { t
 .dyn-desc { color: var(--text-light); font-size: 0.75rem; display: block; margin-bottom: 6px; }
 .dyn-signature { font-size: 0.65rem; color: var(--blood-light); display: block; text-transform: uppercase; letter-spacing: 1px; }
 
-.rank-item { display: flex; justify-content: space-between; width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.4); border-radius: 0; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; transition: var(--transition-smooth); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+.rank-item { display: flex; justify-content: space-between; width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.4); border-radius: 0; margin-bottom: 4px; font-size: 0.85rem; font-weight: 600; transition: var(--transition-smooth); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
 .rank-item:hover { transform: scale(1.02); background: rgba(255,255,255,0.05); }
 .rank-top1 { border-left: 4px solid #c5a059; color: #c5a059; }
 .rank-top2 { border-left: 4px solid #a0a0a0; color: #a0a0a0; }
@@ -661,8 +661,8 @@ footer:hover strong { color: var(--blood-red); }
 /* --- ALBERO GENEALOGICO --- */
 .albero-viewport {
     width: 100%;
-    height: min(78vh, 720px);
-    min-height: 420px;
+    height: min(82vh, 780px);
+    min-height: 480px;
     overflow: hidden;
     border: 2px solid rgba(197, 160, 89, 0.35);
     border-radius: 8px;
@@ -699,7 +699,7 @@ footer:hover strong { color: var(--blood-red); }
     background: transparent;
     border: none;
     border-radius: 0;
-    padding: 28px 36px 36px;
+    padding: 12px 16px 16px;
     width: max-content;
     height: max-content;
     min-width: 0;
@@ -721,17 +721,17 @@ footer:hover strong { color: var(--blood-red); }
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 2px;
     position: relative;
     z-index: 1;
-    padding: 10px 20px 30px;
+    padding: 4px 8px 10px;
 }
 
 .albero-legend {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: var(--text-dim);
     text-align: center;
-    margin-bottom: 18px;
+    margin-bottom: 4px;
     letter-spacing: 0.5px;
     opacity: 0.85;
 }
@@ -741,7 +741,7 @@ footer:hover strong { color: var(--blood-red); }
     flex-wrap: nowrap;
     justify-content: center;
     align-items: flex-start;
-    gap: 40px;
+    gap: 12px;
     width: max-content;
 }
 
@@ -749,9 +749,9 @@ footer:hover strong { color: var(--blood-red); }
     display: flex;
     flex-wrap: nowrap;
     justify-content: center;
-    gap: 18px 28px;
+    gap: 6px 8px;
     width: max-content;
-    margin: 12px 0;
+    margin: 3px 0;
     position: relative;
 }
 
@@ -760,6 +760,8 @@ footer:hover strong { color: var(--blood-red); }
     flex-direction: column;
     align-items: center;
     position: relative;
+    margin: 0;
+    padding: 0;
 }
 
 .albero-node-wrap {
@@ -769,7 +771,7 @@ footer:hover strong { color: var(--blood-red); }
 
 .albero-stem {
     width: 2px;
-    height: 22px;
+    height: 12px;
     background: linear-gradient(180deg, var(--gold-dim), var(--blood-red));
     margin: 0 auto;
     opacity: 0.85;
@@ -783,19 +785,19 @@ footer:hover strong { color: var(--blood-red); }
 }
 
 .albero-siblings-label {
-    font-size: 0.55rem;
+    font-size: 0.5rem;
     color: var(--gold-accent);
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-bottom: 6px;
+    margin-bottom: 1px;
     opacity: 0.9;
     font-weight: 700;
 }
 
 .albero-children-bar {
     height: 2px;
-    width: calc(100% - 60px);
-    min-width: 40px;
+    width: calc(100% - 40px);
+    min-width: 16px;
     background: linear-gradient(90deg, transparent, var(--gold-dim) 8%, var(--blood-red) 50%, var(--gold-dim) 92%, transparent);
     margin: 0 auto;
     opacity: 0.75;
@@ -820,7 +822,7 @@ footer:hover strong { color: var(--blood-red); }
 
 .albero-child-stem {
     width: 2px;
-    height: 18px;
+    height: 10px;
     background: linear-gradient(180deg, var(--blood-red), var(--gold-dim));
     opacity: 0.8;
 }
@@ -829,9 +831,9 @@ footer:hover strong { color: var(--blood-red); }
     background: linear-gradient(160deg, rgba(30,25,20,0.95), rgba(12,10,8,0.98));
     border: 1px solid rgba(197, 160, 89, 0.4);
     border-radius: 6px;
-    width: 130px;
+    width: 122px;
     text-align: center;
-    padding: 10px 8px 12px;
+    padding: 8px 6px 10px;
     position: relative;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
@@ -846,12 +848,12 @@ footer:hover strong { color: var(--blood-red); }
 }
 
 .albero-nodo .nodo-foto {
-    width: 72px;
-    height: 72px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid var(--gold-dim);
-    margin: 0 auto 8px;
+    margin: 0 auto 6px;
     display: block;
     background: #1a1a1a;
     box-shadow: 0 0 10px rgba(139,0,0,0.4);
@@ -894,7 +896,7 @@ footer:hover strong { color: var(--blood-red); }
     margin-top: 5px;
     padding: 4px 6px;
     line-height: 1.3;
-    max-width: 118px;
+    max-width: 122px;
     word-break: break-word;
     border-top: 1px dashed rgba(197, 160, 89, 0.25);
     opacity: 0.95;
@@ -920,7 +922,7 @@ footer:hover strong { color: var(--blood-red); }
     color: #888;
     margin-top: 4px;
     line-height: 1.2;
-    max-width: 120px;
+    max-width: 114px;
     word-break: break-word;
 }
 
@@ -929,7 +931,7 @@ footer:hover strong { color: var(--blood-red); }
     color: var(--gold-dim);
     margin-top: 3px;
     line-height: 1.25;
-    max-width: 120px;
+    max-width: 114px;
     word-break: break-word;
     opacity: 0.9;
 }
@@ -938,8 +940,8 @@ footer:hover strong { color: var(--blood-red); }
     position: absolute;
     top: -8px;
     right: -8px;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     background: linear-gradient(145deg, #1a0a0a, #3a1010);
     color: #fff;
     border-radius: 50%;
@@ -956,12 +958,12 @@ footer:hover strong { color: var(--blood-red); }
 .albero-couple {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .albero-heart {
     color: var(--blood-light);
-    font-size: 1rem;
+    font-size: 0.95rem;
     text-shadow: 0 0 8px rgba(139, 0, 0, 0.8);
     flex-shrink: 0;
     opacity: 0.9;
@@ -977,10 +979,10 @@ footer:hover strong { color: var(--blood-red); }
 
 .albero-title-clan {
     font-family: 'Cinzel', serif;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--gold-accent);
     text-align: center;
-    margin: 18px 0 8px;
+    margin: 2px 0 2px;
     letter-spacing: 2px;
     text-transform: uppercase;
     border-bottom: 1px solid rgba(139,0,0,0.4);
@@ -1052,7 +1054,7 @@ footer:hover strong { color: var(--blood-red); }
 .albero-help-box strong {
     display: block;
     color: var(--gold-accent);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     font-size: 0.8rem;
     letter-spacing: 0.5px;
 }
@@ -1095,8 +1097,8 @@ footer:hover strong { color: var(--blood-red); }
     align-items: center;
 }
 .albero-true-kids-group > .albero-children-bar {
-    width: calc(100% - 60px);
-    min-width: 40px;
+    width: calc(100% - 32px);
+    min-width: 16px;
     align-self: stretch;
     margin: 0 auto;
 }
@@ -1105,7 +1107,7 @@ footer:hover strong { color: var(--blood-red); }
     flex-wrap: nowrap;
     justify-content: center;
     align-items: flex-start;
-    gap: 24px;
+    gap: 10px;
     width: max-content;
 }
 .albero-detached-group {
@@ -1118,7 +1120,7 @@ footer:hover strong { color: var(--blood-red); }
     flex-wrap: nowrap;
     justify-content: center;
     align-items: flex-start;
-    gap: 24px;
+    gap: 10px;
     width: max-content;
 }
 /* Freccia ⇄ in mezzo tra i due box */
@@ -1128,9 +1130,9 @@ footer:hover strong { color: var(--blood-red); }
     justify-content: center;
     flex-shrink: 0;
     align-self: flex-start;
-    margin-top: 105px; /* barra+stelo (~20px) + metà altezza box (~85px) */
-    padding: 0 10px;
-    font-size: 1.25rem;
+    margin-top: 95px; /* barra+stelo (~12) + metà box leggibile */
+    padding: 0 6px;
+    font-size: 1.15rem;
     color: var(--gold-accent);
     text-shadow: 0 0 10px rgba(197,160,89,0.55);
     user-select: none;
