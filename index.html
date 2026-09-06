@@ -1214,11 +1214,11 @@
                         <div class="albero-help-box">
                             <strong>Come compilare (ordine consigliato)</strong>
                             <ol>
-                                <li><b>Prima</b> crea le persone in alto nell’albero (Originari / Sire) lasciando <em>Genitore = Nessuno</em>.</li>
-                                <li><b>Poi</b> crea i figli scegliendo il <em>Genitore 1</em> (e se serve Genitore 2). Stesso genitore = <b>fratelli/sorelle</b>.</li>
-                                <li>Per una <b>coppia</b>: su uno dei due scegli l’altro in <em>Coniuge</em> (compaiono affiancati con ♥).</li>
-                                <li>I <b>cugini</b> nascono da soli: figli di due fratelli (stesso nonno, genitori diversi).</li>
-                                <li><em>Ruolo nel sangue</em> è solo un’etichetta (Sire, Childe, Figlio…): la struttura la fa il campo Genitore.</li>
+                                <li><b>Prima</b> crea le persone in alto (Originari / Sire) con <em>Genitore = Nessuno</em>.</li>
+                                <li><b>Poi</b> i figli col <em>Genitore</em>. Stesso genitore = fratelli automatici.</li>
+                                <li><b>Fratelli senza stessi genitori</b>: nel multi-select «Fratelli / stesso livello» scegli le altre persone (Ctrl/Cmd + click). Restano <b>sulla stessa riga</b>, senza un secondo ramo.</li>
+                                <li>Per una <b>coppia</b>: su uno dei due scegli l’altro in <em>Coniuge</em> (compaiono con ♥).</li>
+                                <li><em>Ruolo nel sangue</em> è solo etichetta; la struttura la fanno Genitore + Fratelli.</li>
                             </ol>
                         </div>
 
@@ -1266,7 +1266,7 @@
                                 <span class="field-hint">Es. l’altro genitore di sangue o il coniuge del Sire.</span>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 22px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;">
                             <div class="form-group" style="margin:0">
                                 <label>Coniuge / Compagno di sangue</label>
                                 <select id="adm-albero-spouse" class="albero-person-select">
@@ -1293,6 +1293,15 @@
                                 </select>
                                 <span class="field-hint">Solo testo sulla card. La posizione la decide «Genitore».</span>
                             </div>
+                        </div>
+                        <div class="form-group" style="margin:0 0 22px 0;">
+                            <label>Fratelli / stesso livello (anche senza stessi genitori)</label>
+                            <select id="adm-albero-fratelli" class="albero-person-select" multiple size="5" style="min-height:110px;">
+                            </select>
+                            <span class="field-hint">
+                                Tieni premuto <b>Ctrl</b> (o Cmd su Mac) per selezionare più persone.
+                                Compariranno <b>sulla stessa riga</b>, senza creare un secondo ramo. Utile per fratelli di sangue diverso, giurati, stessi livello di clan.
+                            </span>
                         </div>
 
                         <h3 class="albero-form-step">3 · Foto e note</h3>

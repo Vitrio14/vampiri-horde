@@ -806,7 +806,7 @@ footer:hover strong { color: var(--blood-red); }
     flex-wrap: nowrap;
     justify-content: center;
     align-items: flex-start;
-    gap: 24px;
+    gap: 4px;
     width: max-content;
     position: relative;
 }
@@ -833,14 +833,16 @@ footer:hover strong { color: var(--blood-red); }
     text-align: center;
     padding: 10px 8px 12px;
     position: relative;
-    transition: var(--transition-smooth);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    transform: translateZ(0);
 }
 
 .albero-nodo:hover {
-    transform: translateY(-4px);
     border-color: var(--gold-accent);
-    box-shadow: 0 8px 24px rgba(139,0,0,0.35), 0 0 12px rgba(197,160,89,0.2);
+    box-shadow: 0 6px 20px rgba(139,0,0,0.4), 0 0 10px rgba(197,160,89,0.25);
 }
 
 .albero-nodo .nodo-foto {
@@ -919,21 +921,23 @@ footer:hover strong { color: var(--blood-red); }
     opacity: 0.9;
 }
 
-.albero-nodo .nodo-cross {
+.albero-nodo .nodo-bat {
     position: absolute;
-    top: -6px;
-    right: -6px;
-    width: 18px;
-    height: 18px;
-    background: var(--blood-red);
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(145deg, #1a0a0a, #3a1010);
     color: #fff;
     border-radius: 50%;
-    font-size: 0.55rem;
+    font-size: 0.72rem;
+    line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(255,255,255,0.2);
-    opacity: 0.85;
+    border: 1px solid rgba(197, 160, 89, 0.45);
+    box-shadow: 0 0 8px rgba(139, 0, 0, 0.45);
+    opacity: 0.95;
 }
 
 .albero-couple {
@@ -1068,4 +1072,62 @@ footer:hover strong { color: var(--blood-red); }
     color: #777;
     margin-top: 6px;
     line-height: 1.35;
+}
+
+
+/* === ALBERO FRATELLI SENZA PADRE (custom) === */
+.albero-true-kids-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.albero-true-kids-group > .albero-children-bar {
+    width: calc(100% - 60px);
+    min-width: 40px;
+    align-self: stretch;
+    margin: 0 auto;
+}
+.albero-true-kids-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+    width: max-content;
+}
+.albero-detached-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.albero-detached-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+    width: max-content;
+}
+/* Freccia ⇄ in mezzo tra i due box */
+.albero-peer-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 105px; /* barra+stelo (~20px) + metà altezza box (~85px) */
+    padding: 0 10px;
+    font-size: 1.25rem;
+    color: var(--gold-accent);
+    text-shadow: 0 0 10px rgba(197,160,89,0.55);
+    user-select: none;
+    line-height: 1;
+}
+.albero-child-stem.albero-stem-invisible {
+    background: transparent !important;
+    opacity: 0 !important;
+}
+.albero-children-bar.albero-bar-invisible {
+    background: transparent !important;
+    opacity: 0 !important;
 }

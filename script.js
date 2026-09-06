@@ -2209,7 +2209,7 @@ window.popolaSelectParentAlbero = () => {
     const optionsHtml = opts.map(n => `<option value="${n.id}">${alberoNomeCompleto(n)}</option>`).join('');
 
     const selects = [
-        { id: 'adm-albero-parent', empty: '— Nessuno (radice) —' },
+        { id: 'adm-albero-parent', empty: '— Nessuno (è una radice) —' },
         { id: 'adm-albero-parent2', empty: '— Nessuno —' },
         { id: 'adm-albero-spouse', empty: '— Nessuno —' }
     ];
@@ -2220,6 +2220,17 @@ window.popolaSelectParentAlbero = () => {
         sel.innerHTML = `<option value="">${empty}</option>` + optionsHtml;
         if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
     });
+
+    // Multi-select fratelli
+    const fratSel = document.getElementById('adm-albero-fratelli');
+    if (fratSel) {
+        const prevMulti = [...fratSel.selectedOptions].map(o => o.value);
+        fratSel.innerHTML = optionsHtml;
+        prevMulti.forEach(v => {
+            const opt = [...fratSel.options].find(o => o.value === v);
+            if (opt) opt.selected = true;
+        });
+    }
 };
 
 window.resetFormAlbero = () => {
@@ -2232,6 +2243,8 @@ window.resetFormAlbero = () => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    const fratSel = document.getElementById('adm-albero-fratelli');
+    if (fratSel) [...fratSel.options].forEach(o => { o.selected = false; });
     const fileEl = document.getElementById('adm-albero-foto-file');
     if (fileEl) fileEl.value = '';
     window.popolaSelectParentAlbero();
@@ -2252,6 +2265,10 @@ window.salvaNodoAlbero = async () => {
     let foto = (document.getElementById('adm-albero-foto-url')?.value || '').trim();
     const editId = (document.getElementById('adm-albero-edit-id')?.value || '').trim();
     const fileInput = document.getElementById('adm-albero-foto-file');
+    const fratelliSel = document.getElementById('adm-albero-fratelli');
+    const fratelliIds = fratelliSel
+        ? [...fratelliSel.selectedOptions].map(o => o.value).filter(Boolean)
+        : [];
 
     if (!nome && !cognome) return vampireToast('Inserisci almeno il nome.', 'error');
     if (parentId && parent2Id && parentId === parent2Id) {
@@ -2262,6 +2279,12 @@ window.salvaNodoAlbero = async () => {
     }
     if (editId && (parentId === editId || parent2Id === editId || spouseId === editId)) {
         return vampireToast('Una persona non può essere genitore o coniuge di se stessa.', 'error');
+    }
+    if (editId && fratelliIds.includes(editId)) {
+        return vampireToast('Non puoi selezionare te stesso come fratello.', 'error');
+    }
+    if (spouseId && fratelliIds.includes(spouseId)) {
+        return vampireToast('Il coniuge non può essere anche nella lista fratelli.', 'error');
     }
 
     // Etichetta automatica se manca: radice → Originario, con genitore → Figlio
@@ -2303,6 +2326,7 @@ window.salvaNodoAlbero = async () => {
             parentId,
             parent2Id,
             spouseId,
+            fratelliIds,
             relazione: relazioneFinal,
             ordine,
             note,
@@ -2343,7 +2367,12 @@ window.caricaNodoAlberoPerEdit = (id) => {
     if (document.getElementById('adm-albero-parent')) document.getElementById('adm-albero-parent').value = n.parentId || '';
     if (document.getElementById('adm-albero-parent2')) document.getElementById('adm-albero-parent2').value = n.parent2Id || '';
     if (document.getElementById('adm-albero-spouse')) document.getElementById('adm-albero-spouse').value = n.spouseId || '';
-    vampireToast('Dati caricati. Modifica e premi Salva Nodo.', 'info');
+    const fratSel = document.getElementById('adm-albero-fratelli');
+    if (fratSel) {
+        const ids = Array.isArray(n.fratelliIds) ? n.fratelliIds : [];
+        [...fratSel.options].forEach(o => { o.selected = ids.includes(o.value); });
+    }
+    vampireToast('Dati caricati. Modifica e premi Salva persona.', 'info');
 };
 
 window.eliminaNodoAlbero = async (id) => {
@@ -2394,6 +2423,18 @@ function buildAlberoTree(nodes) {
     const byId = {};
     nodes.forEach(n => { byId[n.id] = n; });
 
+    // Grafo fratelli (bidirezionale): stesso parentId + fratelliIds dichiarati
+    const sibAdj = {};
+    nodes.forEach(n => { sibAdj[n.id] = new Set(); });
+    nodes.forEach(n => {
+        const listed = Array.isArray(n.fratelliIds) ? n.fratelliIds : [];
+        listed.forEach(fid => {
+            if (!byId[fid] || fid === n.id) return;
+            sibAdj[n.id].add(fid);
+            sibAdj[fid].add(n.id);
+        });
+    });
+    // Stesso genitore principale = fratelli automatici
     const byParent = {};
     nodes.forEach(n => {
         const pid = n.parentId || '__root__';
@@ -2401,10 +2442,35 @@ function buildAlberoTree(nodes) {
         byParent[pid].push(n);
     });
     Object.keys(byParent).forEach(k => {
-        byParent[k].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it'));
+        const list = byParent[k];
+        list.sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it'));
+        if (k === '__root__') return;
+        for (let i = 0; i < list.length; i++) {
+            for (let j = i + 1; j < list.length; j++) {
+                sibAdj[list[i].id].add(list[j].id);
+                sibAdj[list[j].id].add(list[i].id);
+            }
+        }
     });
 
-    const renderedAsSpouse = new Set();
+    function siblingGroupOf(id) {
+        const group = [];
+        const seen = new Set();
+        const stack = [id];
+        while (stack.length) {
+            const cur = stack.pop();
+            if (seen.has(cur) || !byId[cur]) continue;
+            seen.add(cur);
+            group.push(byId[cur]);
+            (sibAdj[cur] || new Set()).forEach(nb => {
+                if (!seen.has(nb)) stack.push(nb);
+            });
+        }
+        group.sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it'));
+        return group;
+    }
+
+    const rendered = new Set();
 
     function siblingLabel(siblings) {
         if (siblings.length < 2) return '';
@@ -2416,13 +2482,12 @@ function buildAlberoTree(nodes) {
         const p1 = n.parentId ? byId[n.parentId] : null;
         const p2 = n.parent2Id ? byId[n.parent2Id] : null;
         const parentHint = [p1, p2].filter(Boolean).map(alberoNomeCompleto).join(' · ');
-        // Conta fratelli (stesso parentId)
-        const sibs = n.parentId ? (byParent[n.parentId] || []).filter(s => s.id !== n.id) : [];
+        const sibs = siblingGroupOf(n.id).filter(s => s.id !== n.id);
         const sibHint = sibs.length
             ? `<div class="nodo-siblings">⇄ ${sibs.map(s => s.nome || alberoNomeCompleto(s)).join(', ')}</div>`
             : '';
         return `<div class="albero-nodo ${extraClass || ''}" data-id="${n.id}">
-            <span class="nodo-cross">✝</span>
+            <span class="nodo-bat" title="Vampiro">🦇</span>
             <img class="nodo-foto" src="${fotoSrc}" alt="" loading="lazy" decoding="async" onerror="this.src='${PLACEHOLDER_FOTO}'">
             <div class="nodo-nome">${n.nome || ''}</div>
             <div class="nodo-cognome">${n.cognome || ''}</div>
@@ -2435,12 +2500,14 @@ function buildAlberoTree(nodes) {
     }
 
     function renderPersonUnit(n) {
-        if (renderedAsSpouse.has(n.id)) return '';
+        if (rendered.has(n.id)) return '';
+        rendered.add(n.id);
+
         const spouse = n.spouseId ? byId[n.spouseId] : null;
         let pairSpouse = null;
-        if (spouse && !renderedAsSpouse.has(spouse.id)) {
+        if (spouse && !rendered.has(spouse.id)) {
             pairSpouse = spouse;
-            renderedAsSpouse.add(spouse.id);
+            rendered.add(spouse.id);
         }
 
         let unit = '';
@@ -2454,34 +2521,100 @@ function buildAlberoTree(nodes) {
             unit = cardHtml(n);
         }
 
-        // Figli di n e del coniuge
-        const kidMap = {};
-        (byParent[n.id] || []).forEach(k => { kidMap[k.id] = k; });
+        // Figli REALI (hanno questo genitore) — la barra e gli steli li collegano al padre
+        const trueKidMap = {};
+        (byParent[n.id] || []).forEach(k => { trueKidMap[k.id] = k; });
         if (pairSpouse) {
-            (byParent[pairSpouse.id] || []).forEach(k => { kidMap[k.id] = k; });
+            (byParent[pairSpouse.id] || []).forEach(k => { trueKidMap[k.id] = k; });
         }
-        const kids = Object.values(kidMap).sort((a, b) =>
+        const trueKids = Object.values(trueKidMap).sort((a, b) =>
+            (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it')
+        );
+
+        // Fratelli dichiarati SENZA questo genitore: stessa riga, ma staccati (niente legame al padre)
+        const detachedMap = {};
+        trueKids.forEach(k => {
+            siblingGroupOf(k.id).forEach(s => {
+                if (rendered.has(s.id) || trueKidMap[s.id]) return;
+                const isChildOfThis = s.parentId === n.id || (pairSpouse && s.parentId === pairSpouse.id);
+                if (isChildOfThis) return;
+                detachedMap[s.id] = s;
+            });
+        });
+        const detached = Object.values(detachedMap).sort((a, b) =>
             (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it')
         );
 
         let html = `<div class="albero-branch">
             <div class="albero-node-wrap">${unit}</div>`;
 
-        if (kids.length) {
-            html += `<div class="albero-stem"></div>
-            <div class="albero-children">
-                ${siblingLabel(kids)}
-                <div class="albero-children-bar"></div>
+        if (trueKids.length || detached.length) {
+            if (trueKids.length) {
+                html += `<div class="albero-stem"></div>`;
+            }
+            const rowPeers = [...trueKids, ...detached];
+            html += `<div class="albero-children">
+                ${siblingLabel(rowPeers)}
                 <div class="albero-children-row">`;
-            kids.forEach(k => {
-                html += `<div class="albero-child-slot">
-                    <div class="albero-child-stem"></div>
-                    ${renderPersonUnit(k)}
-                </div>`;
-            });
+            if (trueKids.length) {
+                html += `<div class="albero-true-kids-group">
+                    <div class="albero-children-bar"></div>
+                    <div class="albero-true-kids-row">`;
+                trueKids.forEach(k => {
+                    html += `<div class="albero-child-slot">
+                        <div class="albero-child-stem"></div>
+                        ${renderPersonUnit(k)}
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
+            if (detached.length) {
+                html += `<div class="albero-peer-link" title="Fratelli / stesso livello">⇄</div>`;
+                html += `<div class="albero-detached-group">
+                    <div class="albero-children-bar albero-bar-invisible"></div>
+                    <div class="albero-detached-row">`;
+                detached.forEach(k => {
+                    html += `<div class="albero-child-slot albero-detached-sibling">
+                        <div class="albero-child-stem albero-stem-invisible"></div>
+                        ${renderPersonUnit(k)}
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
             html += `</div></div>`;
         }
         html += `</div>`;
+        return html;
+    }
+
+    /** Solo radici (senza genitore valido) sulla stessa riga — non tira su i figli di altri */
+    function renderSiblingRow(seedList) {
+        const rowMap = {};
+        seedList.forEach(n => {
+            siblingGroupOf(n.id).forEach(s => {
+                if (rendered.has(s.id)) return;
+                // Solo chi non ha genitore (o genitore inesistente): non spostare chi è figlio di qualcuno
+                if (s.parentId && byId[s.parentId]) return;
+                rowMap[s.id] = s;
+            });
+        });
+        const row = Object.values(rowMap).sort((a, b) =>
+            (a.ordine ?? 0) - (b.ordine ?? 0) || alberoNomeCompleto(a).localeCompare(alberoNomeCompleto(b), 'it')
+        );
+        if (!row.length) return '';
+        let html = '';
+        if (row.length > 1) {
+            html += `<div class="albero-children" style="margin-bottom:12px;">
+                ${siblingLabel(row)}
+                <div class="albero-children-bar"></div>
+                <div class="albero-children-row">`;
+            row.forEach(k => {
+                html += `<div class="albero-child-slot">${renderPersonUnit(k)}</div>`;
+            });
+            html += `</div></div>`;
+        } else {
+            html += renderPersonUnit(row[0]);
+        }
         return html;
     }
 
@@ -2498,12 +2631,30 @@ function buildAlberoTree(nodes) {
     }
 
     let out = '<div class="albero-title-clan">Clan Drakòvič · Dè Lùne</div>';
-    out += '<div class="albero-legend">♥ Coniugi &nbsp;·&nbsp; ⇄ Fratelli/Sorelle &nbsp;·&nbsp; ↳ Figlio/a di</div>';
+    out += '<div class="albero-legend">♥ Coniugi &nbsp;·&nbsp; ⇄ Fratelli/Sorelle (anche senza stessi genitori) &nbsp;·&nbsp; ↳ Figlio/a di</div>';
     out += '<div class="albero-roots-row">';
-    roots.forEach(r => { out += renderPersonUnit(r); });
-    extraRoots.forEach(r => {
-        if (!renderedAsSpouse.has(r.id)) out += renderPersonUnit(r);
+
+    // Radici "differite": senza genitore ma fratelli di qualcuno che HA un genitore
+    // → non in cima: andranno staccati sulla riga dei fratelli sotto quel genitore
+    function isDeferredRoot(n) {
+        if (n.parentId && byId[n.parentId]) return false;
+        return siblingGroupOf(n.id).some(s => s.id !== n.id && s.parentId && byId[s.parentId]);
+    }
+
+    const rootSeeds = [...roots, ...extraRoots].filter(r => !isDeferredRoot(r));
+    const rootSeenGroup = new Set();
+    rootSeeds.forEach(r => {
+        if (rendered.has(r.id) || rootSeenGroup.has(r.id)) return;
+        const group = siblingGroupOf(r.id);
+        group.forEach(g => rootSeenGroup.add(g.id));
+        out += renderSiblingRow(group);
     });
+
+    // Nodi mai disegnati (es. differiti se il fratello genitorato non era raggiungibile)
+    nodes.forEach(n => {
+        if (!rendered.has(n.id)) out += renderPersonUnit(n);
+    });
+
     out += '</div>';
     return out;
 }
@@ -2580,7 +2731,8 @@ function alberoDataSignature(nodes) {
     // Firma leggera senza base64 foto (evita lag e confronti enormi)
     return nodes.map(n => [
         n.id, n.nome, n.cognome, n.clan, n.anno, n.parentId, n.parent2Id,
-        n.spouseId, n.relazione, n.ordine, n.foto ? (n.foto.length + ':' + n.foto.slice(0, 24)) : ''
+        n.spouseId, (Array.isArray(n.fratelliIds) ? n.fratelliIds.join(',') : ''),
+        n.relazione, n.ordine, n.foto ? (n.foto.length + ':' + n.foto.slice(0, 24)) : ''
     ].join('|')).join('~');
 }
 
