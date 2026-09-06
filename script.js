@@ -2494,6 +2494,7 @@ function buildAlberoTree(nodes) {
             ${n.relazione ? `<div class="nodo-relazione">${n.relazione}</div>` : ''}
             ${n.clan ? `<div class="nodo-clan">${n.clan}</div>` : ''}
             ${n.anno ? `<div class="nodo-anno">${n.anno}</div>` : ''}
+            ${n.note ? `<div class="nodo-note" title="${String(n.note).replace(/"/g, '&quot;')}">${n.note}</div>` : ''}
             ${parentHint ? `<div class="nodo-parents">↳ figlio/a di ${parentHint}</div>` : ''}
             ${sibHint}
         </div>`;
