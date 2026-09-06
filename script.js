@@ -495,8 +495,24 @@ window.caricaMembroPerEdit = (nome) => {
 };
 
 function renderVampiriLists() {
-    const ordineGradi = { 'originaria': 1, 'originario': 2, 'anziano': 3, 'adulto': 4, 'neonato': 5 };
-    listaVampiri.sort((a, b) => (ordineGradi[(a.grado || "").toLowerCase().trim()] || 99) - (ordineGradi[(b.grado || "").toLowerCase().trim()] || 99));
+    // Ordine gradi: Originario → Originaria → Mentore → Adulto → Adulta → Neonato → Neonata
+    const ordineGradi = {
+        'originario': 1,
+        'originaria': 2,
+        'mentore': 3,
+        'adulto': 4,
+        'adulta': 5,
+        'neonato': 6,
+        'neonata': 7,
+        'anziano': 8, // legacy
+        'anziana': 9
+    };
+    listaVampiri.sort((a, b) => {
+        const ga = ordineGradi[(a.grado || "").toLowerCase().trim()] || 99;
+        const gb = ordineGradi[(b.grado || "").toLowerCase().trim()] || 99;
+        if (ga !== gb) return ga - gb;
+        return (a.nome || "").localeCompare(b.nome || "", 'it');
+    });
 
     const listaDinamica = document.getElementById('lista-membri-dinamica');
     if (listaDinamica) listaDinamica.innerHTML = listaVampiri.map(v => `<p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px;"><strong>${v.nome}:</strong> ${v.grado}</p>`).join('');
